@@ -5,6 +5,8 @@ SpecBridge is an open-source iOS toolkit that connects Ray-Ban Meta smart glasse
 *Note: While the underlying architecture supports RTMP (allowing for potential YouTube/Kick support), this version is currently hardcoded for Twitch.*
 
 ## Features
+- **720p Vertical Video:** Native support for 9:16 portrait streaming (1280x720) optimized for mobile viewing.
+- **Smart Encoder Priming:** Eliminates "black screen" or "1x1 aspect ratio" glitches on stream start by pre-analyzing video headers.
 - **Live Video Bridge:** Routes raw video frames from Ray-Ban Meta glasses directly to Twitch.
 - **Audio Handling:** Manages iOS audio sessions to prevent Bluetooth disconnects during streaming.
 - **Secure Auth:** Setup screen to input and store your Twitch Stream Key locally on the device.
@@ -89,13 +91,11 @@ Once the app is running on your phone, follow this specific sequence to start a 
 
 ## Known Issues
 
-- **Aspect Ratio Crop:** Currently, the stream broadcasts a 1:1 (Square) crop of the video feed, rather than the full 9:16 vertical video captured by the glasses. I'm investigating a fix for the buffer scaling.
 - **Twitch Only:** This version does not yet support changing the RTMP URL to other services (Kick, YouTube).
 
 ## Roadmap
 
-I'm actively working on the following improvements:
-- **Full 9:16 Support:** Fixing the video pipeline to broadcast the full vertical field of view.
+We are actively working on the following improvements:
 - **Multi-Platform Support:** Adding a settings menu to allow custom RTMP URLs (YouTube, Kick, etc).
 - **UI Polish:** Improving the setup flow and status indicators.
 

@@ -3,6 +3,7 @@ import Combine
 import AVFoundation
 import HaishinKit
 import RTMPHaishinKit
+import VideoToolbox
 
 @MainActor
 class TwitchManager: ObservableObject {
@@ -23,8 +24,24 @@ class TwitchManager: ObservableObject {
         connectionStatus = "Connecting..."
         
         do {
+            // 1. Configure Video Settings for 720p Vertical (9:16)
+            // This prevents the "1x1" or "Landscape" default issue
+            let videoSettings = VideoCodecSettings(
+                videoSize: .init(width: 720, height: 1280),
+                bitRate: 2500 * 1000, // 2.5 Mbps
+                profileLevel: kVTProfileLevel_H264_High_3_1 as String,
+                scalingMode: .trim,
+                maxKeyFrameIntervalDuration: 2, // Twitch standard
+                expectedFrameRate: 24
+            )
+            try await rtmpStream.setVideoSettings(videoSettings)
+            
+            // 2. Connect
             try await rtmpConnection.connect(twitchURL)
+            
+            // 3. Publish
             try await rtmpStream.publish(streamKey)
+            
             connectionStatus = "Live on Twitch!"
             isBroadcasting = true
         } catch {
@@ -45,10 +62,15 @@ class TwitchManager: ObservableObject {
     
     // FIX: Handles the "Actor-isolated" error
     func processVideoFrame(_ buffer: CMSampleBuffer) {
-        guard isBroadcasting else { return }
+        // REMOVED: guard isBroadcasting else { return }
+        // Why? We must send frames to the stream actor even before we are live.
+        // This allows HaishinKit to detect the video format (width/height) from the buffer
+        // so that when we do call 'publish', the metadata contains the correct dimensions.
+        // If we don't do this, metadata is sent as "0x0" or "1x1".
         
         Task {
             // We use 'try? await' to safely send data to the background streamer
+            // If not live, HaishinKit will just update its internal format state without sending data.
             try? await rtmpStream.append(buffer)
         }
     }

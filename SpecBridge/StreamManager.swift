@@ -49,10 +49,10 @@ class StreamManager: ObservableObject {
         status = "Configuring session..."
         let selector = AutoDeviceSelector(wearables: Wearables.shared)
         
-        // Low resolution is often better for smooth live streaming latency
+        // Use High resolution for 720p 9:16 vertical video
         let config = StreamSessionConfig(
             videoCodec: .raw,
-            resolution: .low,
+            resolution: .high,
             frameRate: 24
         )
         
