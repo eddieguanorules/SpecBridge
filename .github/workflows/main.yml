@@ -19,32 +19,43 @@ jobs:
         run: |
           export LC_ALL=C
           export LANG=C
+          STREAM_KEY="3w6v-1cgm-sjrj-8y4r-9v48"
           
-          echo "1. Precision Patching HaishinKit..."
-          # This specifically changes the value assigned to variableBitRate instead of renaming the variable itself
-          # This prevents the 'cannot find in scope' error you just saw
+          echo "1. Fixing HaishinKit Bitrate Crash..."
+          # Fixes the syntax error from the previous build log
           find SourcePackages -type f -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
           
-          echo "2. Hardcoding YouTube Ingest..."
-          # This replaces the Twitch URL with your specific YouTube URL + Key
-          STREAM_KEY="3w6v-1cgm-sjrj-8y4r-9v48"
+          echo "2. Hardcoding YouTube Ingest URL..."
+          # Replaces the internal Twitch URL with YouTube + your key
           find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app/|rtmp://a.rtmp.youtube.com/live2/$STREAM_KEY|g" {} +
 
-          echo "3. Bypassing Login & Registration..."
-          find . -type f -name "*.swift" -exec sed -i '' -E 's/isRegistered[[:space:]]*:[[:space:]]*Bool[[:space:]]*=[[:space:]]*false/isRegistered = true/g' {} +
-          find . -type f -name "*.swift" -exec sed -i '' -E 's/isRegistered[[:space:]]*=[[:space:]]*false/isRegistered = true/g' {} +
-          find . -type f -name "*.swift" -exec sed -i '' -E 's/isAuthorized[[:space:]]*=[[:space:]]*false/isAuthorized = true/g' {} +
-          
-          # Force jump past login screens
-          find . -type f -name "*.swift" -exec sed -i '' 's/showLoginScreen()/return/g' {} +
-          
-          echo "4. Fixing Info.plist Permissions..."
+          echo "3. PRE-FILLING UI & FORCING KEY..."
+          # This ensures the 'streamKey' variable is never empty when the app starts
+          find . -type f -name "*.swift" -exec sed -i '' "s/var streamKey: String = \"\"/var streamKey: String = \"$STREAM_KEY\"/g" {} +
+          # This forces any getter for streamKey to always return your key
+          find . -type f -name "*.swift" -exec sed -i '' "s/var streamKey: String {/var _unused: String {/g" {} +
+          find . -type f -name "*.swift" -exec sed -i '' "s/var streamKey: String/var streamKey: String { return \"$STREAM_KEY\" } \/\/ /g" {} +
+
+          echo "4. BUTTON BYPASS: Disabling Validation..."
+          # Finds logic that checks if the key is empty and tells it 'false' (it's not empty)
+          find . -type f -name "*.swift" -exec sed -i '' 's/streamKey.isEmpty/false/g' {} +
+          find . -type f -name "*.swift" -exec sed -i '' 's/isKeyValid = false/isKeyValid = true/g' {} +
+
+          echo "5. FINAL UI BYPASS: Skipping Login/Setup..."
+          # Force the 'isRegistered' and 'isAuthorized' checks to be permanent 'true'
+          find . -type f -name "*.swift" -exec sed -i '' 's/isRegistered = false/isRegistered = true/g' {} +
+          find . -type f -name "*.swift" -exec sed -i '' 's/isAuthorized = false/isAuthorized = true/g' {} +
+          # Make the checkRegistration function do nothing
+          find . -type f -name "*.swift" -exec sed -i '' 's/func checkRegistration().*/func checkRegistration() { return }/g' {} +
+
+          echo "6. Injecting Info.plist Permissions..."
           find . -name "Info.plist" -exec plutil -replace NSCameraUsageDescription -string "Camera for YouTube" {} \;
           find . -name "Info.plist" -exec plutil -replace NSMicrophoneUsageDescription -string "Mic for YouTube" {} \;
           find . -name "Info.plist" -exec plutil -replace NSLocalNetworkUsageDescription -string "Network for glasses communication" {} \;
 
       - name: Build and Archive
         run: |
+          # Saves all output to build.log for debugging if it fails
           xcodebuild archive \
             -project *.xcodeproj \
             -scheme SpecBridge \
@@ -64,7 +75,7 @@ jobs:
           cp -r "$APP_PATH" build/Payload/
           cd build && zip -r SpecBridge.ipa Payload
 
-      - name: Upload Build Logs
+      - name: Upload Build Logs (Debug Mode)
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -75,5 +86,5 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: SpecBridge-Final-Bypass
+          name: SpecBridge-AutoFill-Bypass
           path: build/SpecBridge.ipa
