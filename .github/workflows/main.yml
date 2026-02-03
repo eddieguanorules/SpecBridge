@@ -16,30 +16,32 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Resolve Dependencies
-        run: xcodebuild -resolvePackageDependencies
+        run: |
+          # We force Xcode to put dependencies in a local 'SourcePackages' folder 
+          # so we can actually find and edit them.
+          xcodebuild -resolvePackageDependencies -clonedSourcePackagesDirPath SourcePackages
 
       - name: Surgical Patch & YouTube Injection
         run: |
-          echo "Step 1: Fixing 'VariableBitRate' Scope Error & Bitrate Stability..."
-          # This replaces the constant causing your build crash with the stable AverageBitRate constant.
-          # It fixes both the 'cannot find in scope' error and prevents frame drops on iPhone 13.
-          find . -name "*.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
+          echo "Step 1: Fixing the 'VariableBitRate' Scope Error in HaishinKit..."
+          # This hunts inside the newly created SourcePackages folder for the exact line causing the crash.
+          find SourcePackages -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
 
           echo "Step 2: Swapping Twitch Ingest for YouTube..."
-          # Replaces the Twitch RTMP URL with YouTube's ingest server.
           find . -name "*.swift" -exec sed -i '' 's|rtmp://live.twitch.tv/app/|rtmp://a.rtmp.youtube.com/live2/|g' {} +
 
           echo "Step 3: Updating UI Labels (Twitch -> YT)..."
-          # This replaces 'Twitch' text in Swift code, Storyboards, and XIB files so it says 'YT'.
           find . -type f \( -name "*.swift" -o -name "*.storyboard" -o -name "*.xib" \) -print0 | xargs -0 sed -i '' 's/Twitch/YT/g'
 
       - name: Build and Archive
         run: |
+          # We MUST tell the build to use the same SourcePackages folder we just patched.
           xcodebuild archive \
             -project *.xcodeproj \
             -scheme SpecBridge \
             -configuration Release \
             -sdk iphoneos \
+            -clonedSourcePackagesDirPath SourcePackages \
             -archivePath build/SpecBridge.xarchive \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
@@ -49,10 +51,6 @@ jobs:
         run: |
           mkdir -p build/Payload
           APP_PATH=$(find build/SpecBridge.xarchive -name "*.app" -type d | head -n 1)
-          echo "Found app at: $APP_PATH"
-          if [ -z "$APP_PATH" ]; then
-            APP_PATH=$(find . -name "*.app" -type d | grep -v "Payload" | head -n 1)
-          fi
           cp -r "$APP_PATH" build/Payload/
           cd build && zip -r SpecBridge.ipa Payload
 
