@@ -17,15 +17,17 @@ jobs:
 
       - name: Surgical Patch & Permission Injection
         run: |
+          # The 'C' locale prevents the "illegal byte sequence" crash on macOS
+          export LC_ALL=C
+          export LANG=C
+
           echo "1. Fixing HaishinKit & Forcing RTMPS for YouTube..."
           find SourcePackages -type f -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
           
-          # Force SECURE YouTube URL with Port 443
           find . -type f -name "*.swift" -exec sed -i '' 's|rtmp://live.twitch.tv/app/|rtmps://a.rtmp.youtube.com:443/live2/|g' {} +
           find . -type f \( -name "*.swift" -o -name "*.storyboard" -o -name "*.xib" \) -print0 | xargs -0 sed -i '' 's/Twitch/YT/g'
 
           echo "2. Injecting Camera & Mic Permissions into Info.plist..."
-          # This forces the iPhone to show the 'Allow Camera' popup
           find . -name "Info.plist" -exec sed -i '' '/<dict>/a \
           <key>NSCameraUsageDescription</key><string>SpecBridge needs camera access for YouTube streaming.</string> \
           <key>NSMicrophoneUsageDescription</key><string>SpecBridge needs microphone access for YouTube audio.</string> \
