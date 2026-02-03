@@ -20,6 +20,7 @@ jobs:
 
       - name: Surgical Patch of HaishinKit
         run: |
+          # Fixing the error Jason couldn't: Patching the hidden bitrate constant
           find ~/Library/Developer/Xcode/DerivedData -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} + || true
           find . -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
 
@@ -34,6 +35,21 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             PROVISIONING_PROFILE_REQUIRED=NO
+
+      - name: Prepare IPA (Nuclear Search)
+        run: |
+          mkdir -p $PWD/build/Payload
+          # This line searches the entire workspace for the .app folder and moves it to the Payload
+          APP_PATH=$(find $PWD/build -name "*.app" -type d | head -n 1)
+          echo "Found app at: $APP_PATH"
+          cp -r "$APP_PATH" $PWD/build/Payload/
+          cd $PWD/build && zip -r SpecBridge.ipa Payload
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SpecBridge-IPA
+          path: build/SpecBridge.ipa
 
       - name: Prepare IPA
         run: |
