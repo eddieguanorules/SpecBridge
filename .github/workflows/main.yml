@@ -20,20 +20,45 @@ jobs:
 
       - name: Surgical Patch of HaishinKit
         run: |
+          # Fixing bitrate fix for the iPhone 13 stream
           find ~/Library/Developer/Xcode/DerivedData -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} + || true
           find . -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
 
       - name: Inject YouTube Ingest URL
         run: |
+          # Swapping out Twitch for YouTube
           find . -name "*.swift" -exec sed -i '' 's|rtmp://live.twitch.tv/app/|rtmp://a.rtmp.youtube.com/live2/|g' {} +
 
       - name: Build and Archive
         run: |
-          mkdir -p build
           xcodebuild archive \
             -project *.xcodeproj \
             -scheme SpecBridge \
             -configuration Release \
+            -sdk iphoneos \
+            -archivePath build/SpecBridge.xarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            PROVISIONING_PROFILE_REQUIRED=NO
+
+      - name: Prepare IPA (Ultimate Search)
+        run: |
+          mkdir -p build/Payload
+          # This hunts for the .app regardless of the subfolder depth
+          APP_PATH=$(find build/SpecBridge.xarchive -name "*.app" -type d | head -n 1)
+          echo "Found app at: $APP_PATH"
+          if [ -z "$APP_PATH" ]; then
+            echo "Searching globally for the app..."
+            APP_PATH=$(find . -name "*.app" -type d | grep -v "Payload" | head -n 1)
+          fi
+          cp -r "$APP_PATH" build/Payload/
+          cd build && zip -r SpecBridge.ipa Payload
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SpecBridge-YouTube-IPA
+          path: build/SpecBridge.ipa
             -sdk iphoneos \
             -archivePath $PWD/build/SpecBridge.xarchive \
             CODE_SIGNING_ALLOWED=NO \
