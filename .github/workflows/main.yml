@@ -7,12 +7,19 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build
         run: |
-          # This part finds the scheme name automatically so we don't have to guess
-          SCHEME_NAME=$(xcodebuild -list -json | jq -r '.project.schemes[0]')
-          echo "Building with scheme: $SCHEME_NAME"
+          # 1. Find the workspace file automatically
+          WORKSPACE_NAME=$(ls -d *.xcodeproj/*.xcworkspace 2>/dev/null || ls -d *.xcworkspace 2>/dev/null | head -n 1)
           
-          xcodebuild archive -project *.xcodeproj -scheme "$SCHEME_NAME" -configuration Release -sdk iphoneos -archivePath $PWD/build/SpecBridge.xcarchive CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+          # 2. Find the first scheme inside that workspace
+          SCHEME_NAME=$(xcodebuild -list -workspace "$WORKSPACE_NAME" -json | jq -r '.workspace.schemes[0]')
           
+          echo "Using Workspace: $WORKSPACE_NAME"
+          echo "Using Scheme: $SCHEME_NAME"
+          
+          # 3. Build the archive using the workspace instead of the project
+          xcodebuild archive -workspace "$WORKSPACE_NAME" -scheme "$SCHEME_NAME" -configuration Release -sdk iphoneos -archivePath $PWD/build/SpecBridge.xcarchive CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+          
+          # 4. Package it into an IPA
           mkdir -p $PWD/build/Payload
           cp -r $PWD/build/SpecBridge.xcarchive/Products/Applications/*.app $PWD/build/Payload
           cd $PWD/build && zip -r SpecBridge.ipa Payload
