@@ -23,7 +23,7 @@ jobs:
       - name: Surgical Patch & YouTube Injection
         run: |
           echo "Step 1: Fixing the 'VariableBitRate' Scope Error in HaishinKit..."
-          # The '-type f' ensures we only edit real files, skipping the symlinks that caused your last crash.
+          # Fixes the 'exit code 1' by only targeting regular files (-type f)
           find SourcePackages -type f -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
 
           echo "Step 2: Swapping Twitch Ingest for YouTube..."
@@ -45,11 +45,11 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             PROVISIONING_PROFILE_REQUIRED=NO
 
-   - name: Prepare IPA
+      - name: Prepare IPA
         run: |
           mkdir -p build/Payload
           
-          # Look for the .app folder anywhere in the workspace
+          # Smarter search to find the .app wherever it was archived
           APP_PATH=$(find . -name "*.app" -type d | grep -v "Payload" | head -n 1)
           echo "Found app at: $APP_PATH"
           
@@ -58,6 +58,11 @@ jobs:
             exit 1
           fi
           
-          # Copy the app to the Payload folder and zip it
           cp -r "$APP_PATH" build/Payload/
           cd build && zip -r SpecBridge.ipa Payload
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SpecBridge-YouTube-IPA
+          path: build/SpecBridge.ipa
