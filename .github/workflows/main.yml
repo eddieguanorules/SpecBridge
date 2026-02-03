@@ -1,4 +1,4 @@
-name: Build SpecBridge IPA (YouTube Bypass)
+name: Build SpecBridge IPA (Final Bypass)
 
 on:
   push:
@@ -8,45 +8,36 @@ on:
 jobs:
   build:
     runs-on: macos-15
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
       - name: Resolve Dependencies
-        run: |
-          xcodebuild -resolvePackageDependencies -clonedSourcePackagesDirPath SourcePackages
+        run: xcodebuild -resolvePackageDependencies -clonedSourcePackagesDirPath SourcePackages
 
-      - name: Surgical Patch & Registration Bypass
+      - name: Surgical Patch & Permission Injection
         run: |
-          echo "Step 1: Fixing HaishinKit VariableBitRate Error..."
+          echo "1. Fixing HaishinKit & Forcing RTMPS for YouTube..."
           find SourcePackages -type f -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
-
-          echo "Step 2: Swapping Twitch for YouTube..."
-          find . -type f -name "*.swift" -exec sed -i '' 's|rtmp://live.twitch.tv/app/|rtmp://a.rtmp.youtube.com/live2/|g' {} +
+          
+          # Force SECURE YouTube URL with Port 443
+          find . -type f -name "*.swift" -exec sed -i '' 's|rtmp://live.twitch.tv/app/|rtmps://a.rtmp.youtube.com:443/live2/|g' {} +
           find . -type f \( -name "*.swift" -o -name "*.storyboard" -o -name "*.xib" \) -print0 | xargs -0 sed -i '' 's/Twitch/YT/g'
 
-          echo "Step 3: Deep Patching Registration & Auth Logic..."
-          # This forces 'isRegistered', 'isAuthorized', and 'isConnected' flags to always stay True
+          echo "2. Injecting Camera & Mic Permissions into Info.plist..."
+          # This forces the iPhone to show the 'Allow Camera' popup
+          find . -name "Info.plist" -exec sed -i '' '/<dict>/a \
+          <key>NSCameraUsageDescription</key><string>SpecBridge needs camera access for YouTube streaming.</string> \
+          <key>NSMicrophoneUsageDescription</key><string>SpecBridge needs microphone access for YouTube audio.</string> \
+          <key>NSLocalNetworkUsageDescription</key><string>SpecBridge needs local network access for glasses communication.</string>' {} +
+
+          echo "3. Forcing Registration Logic to True..."
           find . -type f -name "*.swift" -exec sed -i '' 's/isRegistered = false/isRegistered = true/g' {} +
           find . -type f -name "*.swift" -exec sed -i '' 's/isAuthorized = false/isAuthorized = true/g' {} +
-          find . -type f -name "*.swift" -exec sed -i '' 's/isConnected = false/isConnected = true/g' {} +
-          
-          # This patches common 'guard' statements that kick you out if not registered
-          find . -type f -name "*.swift" -exec sed -i '' 's/guard isRegistered/guard true \/\/ isRegistered/g' {} +
 
       - name: Build and Archive
         run: |
-          xcodebuild archive \
-            -project *.xcodeproj \
-            -scheme SpecBridge \
-            -configuration Release \
-            -sdk iphoneos \
-            -clonedSourcePackagesDirPath SourcePackages \
-            -archivePath build/SpecBridge.xarchive \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            PROVISIONING_PROFILE_REQUIRED=NO
+          xcodebuild archive -project *.xcodeproj -scheme SpecBridge -configuration Release -sdk iphoneos -clonedSourcePackagesDirPath SourcePackages -archivePath build/SpecBridge.xarchive CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO PROVISIONING_PROFILE_REQUIRED=NO
 
       - name: Prepare IPA
         run: |
@@ -58,5 +49,5 @@ jobs:
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SpecBridge-YouTube-Bypass
+          name: SpecBridge-Final-Bypass
           path: build/SpecBridge.ipa
