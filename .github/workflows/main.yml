@@ -20,20 +20,44 @@ jobs:
 
       - name: Surgical Patch of HaishinKit
         run: |
-          # Fixing the bitrate constant for smoother streaming on YouTube
           find ~/Library/Developer/Xcode/DerivedData -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} + || true
           find . -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
 
       - name: Inject YouTube Ingest URL
         run: |
-          # This replaces any mentions of Twitch RTMP with YouTube RTMP in your Swift files
           find . -name "*.swift" -exec sed -i '' 's|rtmp://live.twitch.tv/app/|rtmp://a.rtmp.youtube.com/live2/|g' {} +
 
       - name: Build and Archive
         run: |
+          mkdir -p build
           xcodebuild archive \
             -project *.xcodeproj \
             -scheme SpecBridge \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath $PWD/build/SpecBridge.xarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            PROVISIONING_PROFILE_REQUIRED=NO
+
+      - name: Prepare IPA (Deep Nuclear Search)
+        run: |
+          mkdir -p $PWD/build/Payload
+          # This search is more aggressive; it looks for the .app anywhere in the workspace
+          APP_PATH=$(find . -name "*.app" -type d | grep ".xarchive" | head -n 1)
+          echo "Found app at: $APP_PATH"
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: Could not find .app directory!"
+            exit 1
+          fi
+          cp -r "$APP_PATH" $PWD/build/Payload/
+          cd $PWD/build && zip -r SpecBridge.ipa Payload
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SpecBridge-YouTube-IPA
+          path: build/SpecBridge.ipa
             -configuration Release \
             -sdk iphoneos \
             -archivePath $PWD/build/SpecBridge.xarchive \
