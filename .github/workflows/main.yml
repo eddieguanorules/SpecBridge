@@ -38,6 +38,19 @@ jobs:
       - name: Prepare IPA
         run: |
           mkdir -p $PWD/build/Payload
+          # This updated line searches the ENTIRE build directory for any .app file and moves it
+          find $PWD/build -name "*.app" -type d -exec cp -r {} $PWD/build/Payload/ \;
+          cd $PWD/build && zip -r SpecBridge.ipa Payload
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SpecBridge-IPA
+          path: build/SpecBridge.ipa
+
+      - name: Prepare IPA
+        run: |
+          mkdir -p $PWD/build/Payload
           # This updated line finds the .app file regardless of its specific sub-folder
           find $PWD/build/SpecBridge.xarchive/Products/Applications -name "*.app" -exec cp -r {} $PWD/build/Payload/ \;
           cd $PWD/build && zip -r SpecBridge.ipa Payload
