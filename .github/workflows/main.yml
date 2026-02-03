@@ -2,18 +2,14 @@ name: Build IPA
 on: [push, workflow_dispatch]
 jobs:
   build:
-    # Using macOS 14 for better compatibility with these older packages
-    runs-on: macos-14
+    # This must be macos-15 to handle project format (77)
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       
-      - name: Resolve Dependencies
-        run: |
-          # This forces the Mac to download Logboard and HaishinKit correctly
-          xcodebuild -resolvePackageDependencies -project *.xcodeproj -scheme SpecBridge
-          
       - name: Build
         run: |
+          # We use the default Xcode on macOS 15 to avoid the separator error
           xcodebuild archive \
             -project *.xcodeproj \
             -scheme SpecBridge \
