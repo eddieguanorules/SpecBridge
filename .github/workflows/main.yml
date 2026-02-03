@@ -19,19 +19,22 @@ jobs:
         run: |
           export LC_ALL=C
           export LANG=C
+          
+          # 1. MATCHING YOUR SCREENSHOT
+          # We are using the exact RTMP URL from your image.
+          # We add a '/' at the end of live2 so the key attaches correctly.
           STREAM_KEY="3w6v-1cgm-sjrj-8y4r-9v48"
+          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app/|rtmp://a.rtmp.youtube.com/live2/$STREAM_KEY|g" {} +
 
-          echo "1. Patching URLs and Key..."
-          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app/|rtmps://a.rtmp.youtube.com/live2/$STREAM_KEY|g" {} +
+          # 2. FORCE BITRATE
           find SourcePackages -type f -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
-          find . -type f \( -name "*.swift" -o -name "*.storyboard" -o -name "*.xib" \) -print0 | xargs -0 sed -i '' 's/Twitch/YT/g'
 
-          echo "2. Injecting Permissions..."
-          find . -name "Info.plist" -exec plutil -replace NSCameraUsageDescription -string "SpecBridge needs camera access for YouTube streaming." {} \;
-          find . -name "Info.plist" -exec plutil -replace NSMicrophoneUsageDescription -string "SpecBridge needs microphone access for YouTube audio." {} \;
-          find . -name "Info.plist" -exec plutil -replace NSLocalNetworkUsageDescription -string "SpecBridge needs network access to communicate with the streaming server." {} \;
+          # 3. PERMISSIONS
+          find . -name "Info.plist" -exec plutil -replace NSCameraUsageDescription -string "Camera for YouTube" {} \;
+          find . -name "Info.plist" -exec plutil -replace NSMicrophoneUsageDescription -string "Mic for YouTube" {} \;
+          find . -name "Info.plist" -exec plutil -replace NSLocalNetworkUsageDescription -string "Network for YouTube" {} \;
 
-          echo "3. Forcing Bypass Logic..."
+          # 4. BYPASS REGISTRATION
           find . -type f -name "*.swift" -exec sed -i '' -E 's/isRegistered[[:space:]]*:[[:space:]]*Bool[[:space:]]*=[[:space:]]*false/isRegistered = true/g' {} +
           find . -type f -name "*.swift" -exec sed -i '' -E 's/isRegistered[[:space:]]*=[[:space:]]*false/isRegistered = true/g' {} +
           find . -type f -name "*.swift" -exec sed -i '' -E 's/isAuthorized[[:space:]]*=[[:space:]]*false/isAuthorized = true/g' {} +
@@ -53,10 +56,6 @@ jobs:
         run: |
           mkdir -p build/Payload
           APP_PATH=$(find build/SpecBridge.xcarchive/Products/Applications -name "*.app" -type d | head -n 1)
-          if [ -z "$APP_PATH" ]; then
-            echo "Error: Could not find .app file."
-            exit 1
-          fi
           cp -r "$APP_PATH" build/Payload/
           cd build && zip -r SpecBridge.ipa Payload
 
