@@ -1,4 +1,4 @@
-name: Build SpecBridge IPA (Clean Stable)
+name: Build SpecBridge IPA (Secure Protocol)
 
 on:
   push:
@@ -20,19 +20,20 @@ jobs:
           export LC_ALL=C
           export LANG=C
           
-          echo "1. Fixing HaishinKit Bitrate Logic..."
-          # This is the only way to get the library to compile on modern Xcode
+          echo "1. Fixing HaishinKit Library..."
+          # Fixes the variable bitrate error in the source code
           find SourcePackages -type f -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
           
-          echo "2. Redirecting Twitch to YouTube..."
-          # This keeps the login screen but tells it to send data to YouTube
-          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app/|rtmp://a.rtmp.youtube.com/live2/|g" {} +
+          echo "2. Redirecting to SECURE YouTube Ingest..."
+          # Swaps Twitch for RTMPS (Secure) YouTube
+          # This tells the app to talk to YouTube instead of Twitch
+          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app/|rtmps://a.rtmps.youtube.com/live2/|g" {} +
 
           echo "3. Injecting Info.plist Permissions..."
-          # Essential for iOS to allow the app to use the hardware
+          # Forces iOS to show the "Allow Camera/Mic" popup
           find . -name "Info.plist" -exec plutil -replace NSCameraUsageDescription -string "SpecBridge needs camera access for YouTube streaming." {} \;
           find . -name "Info.plist" -exec plutil -replace NSMicrophoneUsageDescription -string "SpecBridge needs microphone access for YouTube audio." {} \;
-          find . -name "Info.plist" -exec plutil -replace NSLocalNetworkUsageDescription -string "Network access for glasses communication." {} \;
+          find . -name "Info.plist" -exec plutil -replace NSLocalNetworkUsageDescription -string "Network access required for Meta glasses communication." {} \;
 
       - name: Build and Archive
         run: |
@@ -66,5 +67,5 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: SpecBridge-Clean-Stable
+          name: SpecBridge-Secure-Stable
           path: build/SpecBridge.ipa
