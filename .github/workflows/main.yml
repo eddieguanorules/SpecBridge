@@ -45,15 +45,19 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             PROVISIONING_PROFILE_REQUIRED=NO
 
-      - name: Prepare IPA
+   - name: Prepare IPA
         run: |
           mkdir -p build/Payload
-          APP_PATH=$(find build/SpecBridge.xarchive -name "*.app" -type d | head -n 1)
+          
+          # Look for the .app folder anywhere in the workspace
+          APP_PATH=$(find . -name "*.app" -type d | grep -v "Payload" | head -n 1)
+          echo "Found app at: $APP_PATH"
+          
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: Could not find .app file!"
+            exit 1
+          fi
+          
+          # Copy the app to the Payload folder and zip it
           cp -r "$APP_PATH" build/Payload/
           cd build && zip -r SpecBridge.ipa Payload
-
-      - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: SpecBridge-YouTube-IPA
-          path: build/SpecBridge.ipa
