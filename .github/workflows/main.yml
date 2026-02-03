@@ -20,28 +20,29 @@ jobs:
           export LC_ALL=C
           export LANG=C
 
-          echo "1. Fixing HaishinKit & Forcing RTMPS..."
-          # Using -i '' for macOS sed compatibility
+          echo "1. Fixing HaishinKit & Forcing YouTube RTMPS with Stream Key..."
+          # Fix Bitrate logic in dependencies
           find SourcePackages -type f -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
           
-          # Replace Twitch URLs with YouTube
-          find . -type f -name "*.swift" -exec sed -i '' 's|rtmp://live.twitch.tv/app/|rtmps://a.rtmp.youtube.com:443/live2/|g' {} +
+          # Inject YouTube URL and your specific Stream Key
+          # This replaces the generic Twitch URL with your YouTube endpoint + key
+          find . -type f -name "*.swift" -exec sed -i '' 's|rtmp://live.twitch.tv/app/|rtmps://a.rtmp.youtube.com:443/live2/3w6v-1cgm-sjrj-8y4r-9v48|g' {} +
+          
+          # Rename Twitch references to YT in UI files
           find . -type f \( -name "*.swift" -o -name "*.storyboard" -o -name "*.xib" \) -print0 | xargs -0 sed -i '' 's/Twitch/YT/g'
 
-          echo "2. Injecting Permissions via plutil (Safer than sed)"
+          echo "2. Injecting Permissions via plutil"
           find . -name "Info.plist" -exec plutil -replace NSCameraUsageDescription -string "SpecBridge needs camera access for YouTube streaming." {} \;
           find . -name "Info.plist" -exec plutil -replace NSMicrophoneUsageDescription -string "SpecBridge needs microphone access for YouTube audio." {} \;
           find . -name "Info.plist" -exec plutil -replace NSLocalNetworkUsageDescription -string "SpecBridge needs local network access for glasses communication." {} \;
 
-          echo "3. Forcing Registration Logic (Regex-style for flexibility)"
-          # This catches 'isRegistered = false', 'isRegistered=false', and 'isRegistered : Bool = false'
+          echo "3. Forcing Registration Logic (Bypass)"
           find . -type f -name "*.swift" -exec sed -i '' -E 's/isRegistered[[:space:]]*:[[:space:]]*Bool[[:space:]]*=[[:space:]]*false/isRegistered = true/g' {} +
           find . -type f -name "*.swift" -exec sed -i '' -E 's/isRegistered[[:space:]]*=[[:space:]]*false/isRegistered = true/g' {} +
           find . -type f -name "*.swift" -exec sed -i '' -E 's/isAuthorized[[:space:]]*=[[:space:]]*false/isAuthorized = true/g' {} +
 
       - name: Build and Archive
         run: |
-          # Note: Replace 'SpecBridge.xcodeproj' with your actual .xcodeproj or .xcworkspace name if different
           xcodebuild archive \
             -project *.xcodeproj \
             -scheme SpecBridge \
@@ -56,7 +57,6 @@ jobs:
       - name: Prepare IPA
         run: |
           mkdir -p build/Payload
-          # Correctly locate the .app inside the xcarchive structure
           APP_PATH=$(find build/SpecBridge.xcarchive/Products/Applications -name "*.app" -type d | head -n 1)
           if [ -z "$APP_PATH" ]; then
             echo "Error: Could not find .app file in archive."
