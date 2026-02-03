@@ -21,23 +21,24 @@ jobs:
           export LANG=C
           STREAM_KEY="3w6v-1cgm-sjrj-8y4r-9v48"
           
-          echo "1. Fixing HaishinKit Bitrate..."
+          echo "1. Fixing HaishinKit Bitrate Crash..."
           find SourcePackages -type f -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
           
           echo "2. Hardcoding YouTube Ingest URL..."
           find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app/|rtmp://a.rtmp.youtube.com/live2/$STREAM_KEY|g" {} +
 
-          echo "3. FIXING SYNTAX: Forcing default value instead of computed property..."
-          # This replaces the empty string initialization with your actual key
-          # This keeps the @Binding and @State wrappers intact so the code compiles
+          echo "3. PRE-FILLING UI: Putting the key in the text box..."
+          # This sets the initial value of the streamKey string to your YouTube key
+          # It keeps the @Binding/@State syntax so the compiler doesn't crash
           find . -type f -name "*.swift" -exec sed -i '' "s/streamKey: String = \"\"/streamKey: String = \"$STREAM_KEY\"/g" {} +
           find . -type f -name "*.swift" -exec sed -i '' "s/streamKey = \"\"/streamKey = \"$STREAM_KEY\"/g" {} +
 
           echo "4. BUTTON BYPASS: Making 'Go Live' always clickable..."
+          # Forces the app to think the key is valid and not empty
           find . -type f -name "*.swift" -exec sed -i '' 's/streamKey.isEmpty/false/g' {} +
           find . -type f -name "*.swift" -exec sed -i '' 's/isKeyValid = false/isKeyValid = true/g' {} +
 
-          echo "5. UI BYPASS: Skipping Login/Registration..."
+          echo "5. FINAL UI BYPASS: Skipping Login/Registration..."
           find . -type f -name "*.swift" -exec sed -i '' 's/isRegistered = false/isRegistered = true/g' {} +
           find . -type f -name "*.swift" -exec sed -i '' 's/isAuthorized = false/isAuthorized = true/g' {} +
           find . -type f -name "*.swift" -exec sed -i '' 's/func checkRegistration().*/func checkRegistration() { return }/g' {} +
@@ -45,7 +46,7 @@ jobs:
           echo "6. Injecting Info.plist Permissions..."
           find . -name "Info.plist" -exec plutil -replace NSCameraUsageDescription -string "Camera for YouTube" {} \;
           find . -name "Info.plist" -exec plutil -replace NSMicrophoneUsageDescription -string "Mic for YouTube" {} \;
-          find . -name "Info.plist" -exec plutil -replace NSLocalNetworkUsageDescription -string "Network access for glasses" {} \;
+          find . -name "Info.plist" -exec plutil -replace NSLocalNetworkUsageDescription -string "Network for glasses communication" {} \;
 
       - name: Build and Archive
         run: |
@@ -68,7 +69,7 @@ jobs:
           cp -r "$APP_PATH" build/Payload/
           cd build && zip -r SpecBridge.ipa Payload
 
-      - name: Upload Build Logs
+      - name: Upload Build Logs (Debug Mode)
         if: always()
         uses: actions/upload-artifact@v4
         with:
