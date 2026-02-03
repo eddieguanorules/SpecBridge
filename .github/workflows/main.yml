@@ -21,14 +21,17 @@ jobs:
       - name: Inject YouTube Ingest and Fix UI
         run: |
           echo "Updating RTMP URL to YouTube..."
+          # Replaces the Twitch ingest with YouTube.
           find . -name "*.swift" -exec sed -i '' 's|rtmp://live.twitch.tv/app/|rtmp://a.rtmp.youtube.com/live2/|g' {} +
 
           echo "Updating UI Labels from Twitch to YT..."
+          # Replaces visible text in the app's code and layout files.
           find . -type f \( -name "*.swift" -o -name "*.storyboard" -o -name "*.xib" \) -print0 | xargs -0 sed -i '' 's/Twitch/YT/g'
 
       - name: iPhone 13 Stability Patch (HaishinKit)
         run: |
           echo "Applying Bitrate Patch..."
+          # Changes Variable Bitrate to Average Bitrate to prevent encoder crashes on iPhone 13.
           find . -name "*.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
 
       - name: Build and Archive
