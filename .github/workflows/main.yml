@@ -7,7 +7,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build
         run: |
-          xcodebuild -project SpecBridge.xcodeproj -scheme SpecBridge -configuration Release -sdk iphoneos archive -archivePath $PWD/build/SpecBridge.xcarchive CODE_SIGNING_ALLOWED=NO
+          xcodebuild archive -project *.xcodeproj -scheme SpecBridge -configuration Release -sdk iphoneos -archivePath $PWD/build/SpecBridge.xcarchive CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
           mkdir -p $PWD/build/Payload
           cp -r $PWD/build/SpecBridge.xcarchive/Products/Applications/*.app $PWD/build/Payload
           cd $PWD/build && zip -r SpecBridge.ipa Payload
