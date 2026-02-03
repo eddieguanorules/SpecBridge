@@ -7,7 +7,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build
         run: |
-          xcodebuild archive -project *.xcodeproj -scheme SpecBridge -configuration Release -sdk iphoneos -archivePath $PWD/build/SpecBridge.xcarchive CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+          # This part finds the scheme name automatically so we don't have to guess
+          SCHEME_NAME=$(xcodebuild -list -json | jq -r '.project.schemes[0]')
+          echo "Building with scheme: $SCHEME_NAME"
+          
+          xcodebuild archive -project *.xcodeproj -scheme "$SCHEME_NAME" -configuration Release -sdk iphoneos -archivePath $PWD/build/SpecBridge.xcarchive CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO
+          
           mkdir -p $PWD/build/Payload
           cp -r $PWD/build/SpecBridge.xcarchive/Products/Applications/*.app $PWD/build/Payload
           cd $PWD/build && zip -r SpecBridge.ipa Payload
@@ -15,4 +20,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: SpecBridge-IPA
-          path: build/SpecBridge.ipa 
+          path: build/SpecBridge.ipa
