@@ -55,7 +55,7 @@ jobs:
           cd build && zip -r SpecBridge.ipa Payload
 
       - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4 
         with:
           name: SpecBridge-YouTube-IPA
           path: build/SpecBridge.ipa
