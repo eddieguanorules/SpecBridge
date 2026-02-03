@@ -20,21 +20,23 @@ jobs:
           export LC_ALL=C
           export LANG=C
 
-          echo "1. Fixing HaishinKit & Forcing YouTube RTMPS with Stream Key..."
-          # Fix Bitrate logic in dependencies
+          echo "1. Forcing RTMP Compatibility & Injecting Stream Key..."
+          
+          # Replace Twitch RTMP URL with YouTube RTMP (Standard port 1935 for better compatibility)
+          # We use rtmp:// instead of rtmps:// to bypass SSL handshake issues in older library versions
+          find . -type f -name "*.swift" -exec sed -i '' 's|rtmp://live.twitch.tv/app/|rtmp://a.rtmp.youtube.com/live2/3w6v-1cgm-sjrj-8y4r-9v48|g' {} +
+          
+          # Fix Bitrate logic in dependencies (Crucial for YouTube connection stability)
           find SourcePackages -type f -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
           
-          # Inject YouTube URL and your specific Stream Key
-          # This replaces the generic Twitch URL with your YouTube endpoint + key
-          find . -type f -name "*.swift" -exec sed -i '' 's|rtmp://live.twitch.tv/app/|rtmps://a.rtmp.youtube.com:443/live2/3w6v-1cgm-sjrj-8y4r-9v48|g' {} +
-          
-          # Rename Twitch references to YT in UI files
+          # Rename UI references
           find . -type f \( -name "*.swift" -o -name "*.storyboard" -o -name "*.xib" \) -print0 | xargs -0 sed -i '' 's/Twitch/YT/g'
 
           echo "2. Injecting Permissions via plutil"
+          # Added NSLocalNetworkUsageDescription which is often required for socket connections
           find . -name "Info.plist" -exec plutil -replace NSCameraUsageDescription -string "SpecBridge needs camera access for YouTube streaming." {} \;
           find . -name "Info.plist" -exec plutil -replace NSMicrophoneUsageDescription -string "SpecBridge needs microphone access for YouTube audio." {} \;
-          find . -name "Info.plist" -exec plutil -replace NSLocalNetworkUsageDescription -string "SpecBridge needs local network access for glasses communication." {} \;
+          find . -name "Info.plist" -exec plutil -replace NSLocalNetworkUsageDescription -string "SpecBridge needs network access to communicate with the streaming server." {} \;
 
           echo "3. Forcing Registration Logic (Bypass)"
           find . -type f -name "*.swift" -exec sed -i '' -E 's/isRegistered[[:space:]]*:[[:space:]]*Bool[[:space:]]*=[[:space:]]*false/isRegistered = true/g' {} +
