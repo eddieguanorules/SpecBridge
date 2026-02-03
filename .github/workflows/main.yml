@@ -1,4 +1,4 @@
-name: Build SpecBridge IPA (Final Bypass)
+name: Build SpecBridge IPA (Clean Stable)
 
 on:
   push:
@@ -19,34 +19,20 @@ jobs:
         run: |
           export LC_ALL=C
           export LANG=C
-          STREAM_KEY="3w6v-1cgm-sjrj-8y4r-9v48"
           
-          echo "1. Fixing HaishinKit Bitrate Crash..."
+          echo "1. Fixing HaishinKit Bitrate Logic..."
+          # This is the only way to get the library to compile on modern Xcode
           find SourcePackages -type f -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
           
-          echo "2. Hardcoding YouTube Ingest URL..."
-          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app/|rtmp://a.rtmp.youtube.com/live2/$STREAM_KEY|g" {} +
+          echo "2. Redirecting Twitch to YouTube..."
+          # This keeps the login screen but tells it to send data to YouTube
+          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app/|rtmp://a.rtmp.youtube.com/live2/|g" {} +
 
-          echo "3. PRE-FILLING UI: Putting the key in the text box..."
-          # This sets the initial value of the streamKey string to your YouTube key
-          # It keeps the @Binding/@State syntax so the compiler doesn't crash
-          find . -type f -name "*.swift" -exec sed -i '' "s/streamKey: String = \"\"/streamKey: String = \"$STREAM_KEY\"/g" {} +
-          find . -type f -name "*.swift" -exec sed -i '' "s/streamKey = \"\"/streamKey = \"$STREAM_KEY\"/g" {} +
-
-          echo "4. BUTTON BYPASS: Making 'Go Live' always clickable..."
-          # Forces the app to think the key is valid and not empty
-          find . -type f -name "*.swift" -exec sed -i '' 's/streamKey.isEmpty/false/g' {} +
-          find . -type f -name "*.swift" -exec sed -i '' 's/isKeyValid = false/isKeyValid = true/g' {} +
-
-          echo "5. FINAL UI BYPASS: Skipping Login/Registration..."
-          find . -type f -name "*.swift" -exec sed -i '' 's/isRegistered = false/isRegistered = true/g' {} +
-          find . -type f -name "*.swift" -exec sed -i '' 's/isAuthorized = false/isAuthorized = true/g' {} +
-          find . -type f -name "*.swift" -exec sed -i '' 's/func checkRegistration().*/func checkRegistration() { return }/g' {} +
-
-          echo "6. Injecting Info.plist Permissions..."
-          find . -name "Info.plist" -exec plutil -replace NSCameraUsageDescription -string "Camera for YouTube" {} \;
-          find . -name "Info.plist" -exec plutil -replace NSMicrophoneUsageDescription -string "Mic for YouTube" {} \;
-          find . -name "Info.plist" -exec plutil -replace NSLocalNetworkUsageDescription -string "Network for glasses communication" {} \;
+          echo "3. Injecting Info.plist Permissions..."
+          # Essential for iOS to allow the app to use the hardware
+          find . -name "Info.plist" -exec plutil -replace NSCameraUsageDescription -string "SpecBridge needs camera access for YouTube streaming." {} \;
+          find . -name "Info.plist" -exec plutil -replace NSMicrophoneUsageDescription -string "SpecBridge needs microphone access for YouTube audio." {} \;
+          find . -name "Info.plist" -exec plutil -replace NSLocalNetworkUsageDescription -string "Network access for glasses communication." {} \;
 
       - name: Build and Archive
         run: |
@@ -69,7 +55,7 @@ jobs:
           cp -r "$APP_PATH" build/Payload/
           cd build && zip -r SpecBridge.ipa Payload
 
-      - name: Upload Build Logs (Debug Mode)
+      - name: Upload Build Logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -80,5 +66,5 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: SpecBridge-Final-Fixed
+          name: SpecBridge-Clean-Stable
           path: build/SpecBridge.ipa
