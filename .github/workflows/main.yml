@@ -17,14 +17,13 @@ jobs:
 
       - name: Resolve Dependencies
         run: |
-          # We force Xcode to put dependencies in a local 'SourcePackages' folder 
-          # so we can actually find and edit them.
+          # Force dependencies into a predictable local folder
           xcodebuild -resolvePackageDependencies -clonedSourcePackagesDirPath SourcePackages
 
       - name: Surgical Patch & YouTube Injection
         run: |
           echo "Step 1: Fixing the 'VariableBitRate' Scope Error in HaishinKit..."
-          # This hunts inside the newly created SourcePackages folder for the exact line causing the crash.
+          # This specifically targets the file in the new SourcePackages folder
           find SourcePackages -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
 
           echo "Step 2: Swapping Twitch Ingest for YouTube..."
@@ -35,7 +34,7 @@ jobs:
 
       - name: Build and Archive
         run: |
-          # We MUST tell the build to use the same SourcePackages folder we just patched.
+          # Point the build to the SAME SourcePackages folder we just patched
           xcodebuild archive \
             -project *.xcodeproj \
             -scheme SpecBridge \
@@ -55,7 +54,7 @@ jobs:
           cd build && zip -r SpecBridge.ipa Payload
 
       - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4 
+        uses: actions/upload-artifact@v4
         with:
           name: SpecBridge-YouTube-IPA
           path: build/SpecBridge.ipa
