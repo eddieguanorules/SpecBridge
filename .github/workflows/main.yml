@@ -1,4 +1,4 @@
-Name: Build SpecBridge IPA (YouTube)
+name: Build SpecBridge IPA (YouTube)
 
 on:
   push:
@@ -34,6 +34,27 @@ jobs:
           xcodebuild archive \
             -project *.xcodeproj \
             -scheme SpecBridge \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath $PWD/build/SpecBridge.xarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            PROVISIONING_PROFILE_REQUIRED=NO
+
+      - name: Prepare IPA (Consolidated Nuclear Search)
+        run: |
+          mkdir -p $PWD/build/Payload
+          # Find the .app folder and move it to Payload for ZIPing
+          APP_PATH=$(find $PWD/build/SpecBridge.xarchive -name "*.app" -type d | head -n 1)
+          echo "Found app at: $APP_PATH"
+          cp -r "$APP_PATH" $PWD/build/Payload/
+          cd $PWD/build && zip -r SpecBridge.ipa Payload
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SpecBridge-YouTube-IPA
+          path: build/SpecBridge.ipa
             -configuration Release \
             -sdk iphoneos \
             -archivePath $PWD/build/SpecBridge.xarchive \
