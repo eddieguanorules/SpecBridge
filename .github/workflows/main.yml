@@ -21,30 +21,34 @@ jobs:
           export LANG=C
 
           echo "1. Forcing RTMP Compatibility & Injecting Stream Key..."
-          
-          # Replace Twitch RTMP URL with YouTube RTMP (Standard port 1935 for better compatibility)
-          # We use rtmp:// instead of rtmps:// to bypass SSL handshake issues in older library versions
-          find . -type f -name "*.swift" -exec sed -i '' 's|rtmp://live.twitch.tv/app/|rtmp://a.rtmp.youtube.com/live2/3w6v-1cgm-sjrj-8y4r-9v48|g' {} +
-          
+
+          # Replace Twitch RTMP URL with YouTube RTMP (Use rtmps:// for secure connection)
+          # Ensure the stream key is dynamically provided or handled better
+          STREAM_KEY="3w6v-1cgm-sjrj-8y4r-9v48" # You can replace this with a dynamic method of fetching the stream key
+          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app/|rtmps://a.rtmp.youtube.com/live2/$STREAM_KEY|g" {} +
+
           # Fix Bitrate logic in dependencies (Crucial for YouTube connection stability)
           find SourcePackages -type f -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
-          
-          # Rename UI references
+
+          # Rename UI references (Twitch -> YT)
           find . -type f \( -name "*.swift" -o -name "*.storyboard" -o -name "*.xib" \) -print0 | xargs -0 sed -i '' 's/Twitch/YT/g'
 
           echo "2. Injecting Permissions via plutil"
-          # Added NSLocalNetworkUsageDescription which is often required for socket connections
+          # Added NSCameraUsageDescription, NSMicrophoneUsageDescription, and NSLocalNetworkUsageDescription
+          # These are necessary for accessing device resources for streaming
           find . -name "Info.plist" -exec plutil -replace NSCameraUsageDescription -string "SpecBridge needs camera access for YouTube streaming." {} \;
           find . -name "Info.plist" -exec plutil -replace NSMicrophoneUsageDescription -string "SpecBridge needs microphone access for YouTube audio." {} \;
           find . -name "Info.plist" -exec plutil -replace NSLocalNetworkUsageDescription -string "SpecBridge needs network access to communicate with the streaming server." {} \;
 
           echo "3. Forcing Registration Logic (Bypass)"
+          # Bypass registration and authorization logic by force-setting isRegistered and isAuthorized to true
           find . -type f -name "*.swift" -exec sed -i '' -E 's/isRegistered[[:space:]]*:[[:space:]]*Bool[[:space:]]*=[[:space:]]*false/isRegistered = true/g' {} +
           find . -type f -name "*.swift" -exec sed -i '' -E 's/isRegistered[[:space:]]*=[[:space:]]*false/isRegistered = true/g' {} +
           find . -type f -name "*.swift" -exec sed -i '' -E 's/isAuthorized[[:space:]]*=[[:space:]]*false/isAuthorized = true/g' {} +
 
       - name: Build and Archive
         run: |
+          # Archive the app without code-signing
           xcodebuild archive \
             -project *.xcodeproj \
             -scheme SpecBridge \
