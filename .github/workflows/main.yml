@@ -18,20 +18,22 @@ jobs:
       - name: Resolve Dependencies
         run: xcodebuild -resolvePackageDependencies
 
-      - name: Surgical Patch & YouTube Injection
+      - name: Inject YouTube Ingest and Fix UI
         run: |
-          echo "Step 1: Fixing Bitrate for iPhone 13 Stability..."
-          # Changes Variable Bitrate to Average Bitrate to prevent frame drops on older encoders
-          find . -name "*.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
-
-          echo "Step 2: Swapping Twitch Ingest for YouTube..."
-          # Replaces the Twitch RTMP URL with YouTube's ingest server
-          # Note: The trailing slash is vital for YouTube stream key appending
+          echo "Updating RTMP URL to YouTube..."
+          # Replaces the Twitch ingest with YouTube. 
+          # The trailing slash is essential for the stream key to attach correctly.
           find . -name "*.swift" -exec sed -i '' 's|rtmp://live.twitch.tv/app/|rtmp://a.rtmp.youtube.com/live2/|g' {} +
 
-          echo "Step 3: Updating UI Labels (Twitch -> YT)..."
-          # This replaces 'Twitch' text in Swift code, Storyboards, and XIB files
+          echo "Updating UI Labels from Twitch to YT..."
+          # This replaces the visible text in the app's code and layout files.
           find . -type f \( -name "*.swift" -o -name "*.storyboard" -o -name "*.xib" \) -print0 | xargs -0 sed -i '' 's/Twitch/YT/g'
+
+      - name: iPhone 13 Stability Patch (HaishinKit)
+        run: |
+          echo "Applying Bitrate Patch..."
+          # Changes Variable Bitrate to Average Bitrate to prevent encoder crashes on iPhone 13.
+          find . -name "*.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
 
       - name: Build and Archive
         run: |
@@ -48,16 +50,14 @@ jobs:
       - name: Prepare IPA
         run: |
           mkdir -p build/Payload
+          # Locates the compiled app within the archive
           APP_PATH=$(find build/SpecBridge.xarchive -name "*.app" -type d | head -n 1)
           echo "Found app at: $APP_PATH"
-          if [ -z "$APP_PATH" ]; then
-            APP_PATH=$(find . -name "*.app" -type d | grep -v "Payload" | head -n 1)
-          fi
           cp -r "$APP_PATH" build/Payload/
           cd build && zip -r SpecBridge.ipa Payload
 
       - name: Upload IPA Artifact
-        uses: tags/upload-artifact@v4
+        uses: actions/upload-artifact@v4
         with:
           name: SpecBridge-YouTube-IPA
           path: build/SpecBridge.ipa
