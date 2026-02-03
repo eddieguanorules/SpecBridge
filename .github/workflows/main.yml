@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    runs-runs-on: macos-15
+    runs-on: macos-15
 
     steps:
       - name: Checkout Repository
@@ -40,130 +40,16 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             PROVISIONING_PROFILE_REQUIRED=NO
 
-      - name: Prepare IPA (Final Fix)
+      - name: Prepare IPA (Targeted Path)
         run: |
           mkdir -p $PWD/build/Payload
-          # This finds the .app inside the archive specifically, avoiding the Payload folder
-          APP_PATH=$(find $PWD/build/SpecBridge.xarchive -name "*.app" -type d | head -n 1)
-          echo "Found app at: $APP_PATH"
-          cp -r "$APP_PATH" $PWD/build/Payload/
-          cd $PWD/build && zip -r SpecBridge.ipa Payload
-
-      - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: SpecBridge-YouTube-IPA
-          path: build/SpecBridge.ipa
-            -scheme SpecBridge \
-            -configuration Release \
-            -sdk iphoneos \
-            -archivePath $PWD/build/SpecBridge.xarchive \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            PROVISIONING_PROFILE_REQUIRED=NO
-
-      - name: Prepare IPA (Deep Search)
-        run: |
-          mkdir -p $PWD/build/Payload
-          # This finds the .app folder no matter where it is hidden in the build directory
-          APP_PATH=$(find $PWD/build -name "*.app" -type d | head -n 1)
+          # Specifically looking INSIDE the archive to avoid the identical file error
+          APP_PATH=$(find $PWD/build/SpecBridge.xarchive/Products/Applications -name "*.app" -type d | head -n 1)
           echo "Found app at: $APP_PATH"
           if [ -z "$APP_PATH" ]; then
-            echo "Error: App folder not found!"
+            echo "Error: App not found in archive!"
             exit 1
           fi
-          cp -r "$APP_PATH" $PWD/build/Payload/
-          cd $PWD/build && zip -r SpecBridge.ipa Payload
-
-      - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: SpecBridge-YouTube-IPA
-          path: build/SpecBridge.ipa
-            -scheme SpecBridge \
-            -configuration Release \
-            -sdk iphoneos \
-            -archivePath $PWD/build/SpecBridge.xarchive \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            PROVISIONING_PROFILE_REQUIRED=NO
-
-      - name: Prepare IPA (Deep Search)
-        run: |
-          mkdir -p $PWD/build/Payload
-          # This finds the .app folder no matter where it is hidden in the build directory
-          APP_PATH=$(find $PWD/build -name "*.app" -type d | head -n 1)
-          echo "Found app at: $APP_PATH"
-          if [ -z "$APP_PATH" ]; then
-            echo "Error: App folder not found!"
-            exit 1
-          fi
-          cp -r "$APP_PATH" $PWD/build/Payload/
-          cd $PWD/build && zip -r SpecBridge.ipa Payload
-
-      - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: SpecBridge-YouTube-IPA
-          path: build/SpecBridge.ipa
-            -sdk iphoneos \
-            -archivePath $PWD/build/SpecBridge.xarchive \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            PROVISIONING_PROFILE_REQUIRED=NO
-
-      - name: Prepare IPA (Deep Nuclear Search)
-        run: |
-          mkdir -p $PWD/build/Payload
-          # This search is more aggressive; it looks for the .app anywhere in the workspace
-          APP_PATH=$(find . -name "*.app" -type d | grep ".xarchive" | head -n 1)
-          echo "Found app at: $APP_PATH"
-          if [ -z "$APP_PATH" ]; then
-            echo "Error: Could not find .app directory!"
-            exit 1
-          fi
-          cp -r "$APP_PATH" $PWD/build/Payload/
-          cd $PWD/build && zip -r SpecBridge.ipa Payload
-
-      - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: SpecBridge-YouTube-IPA
-          path: build/SpecBridge.ipa
-            -configuration Release \
-            -sdk iphoneos \
-            -archivePath $PWD/build/SpecBridge.xarchive \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            PROVISIONING_PROFILE_REQUIRED=NO
-
-      - name: Prepare IPA (Consolidated Nuclear Search)
-        run: |
-          mkdir -p $PWD/build/Payload
-          # Find the .app folder and move it to Payload for ZIPing
-          APP_PATH=$(find $PWD/build/SpecBridge.xarchive -name "*.app" -type d | head -n 1)
-          echo "Found app at: $APP_PATH"
-          cp -r "$APP_PATH" $PWD/build/Payload/
-          cd $PWD/build && zip -r SpecBridge.ipa Payload
-
-      - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: SpecBridge-YouTube-IPA
-          path: build/SpecBridge.ipa
-            -configuration Release \
-            -sdk iphoneos \
-            -archivePath $PWD/build/SpecBridge.xarchive \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            PROVISIONING_PROFILE_REQUIRED=NO
-
-      - name: Prepare IPA (Consolidated Nuclear Search)
-        run: |
-          mkdir -p $PWD/build/Payload
-          # Find the .app folder and move it to Payload for ZIPing
-          APP_PATH=$(find $PWD/build/SpecBridge.xarchive -name "*.app" -type d | head -n 1)
-          echo "Found app at: $APP_PATH"
           cp -r "$APP_PATH" $PWD/build/Payload/
           cd $PWD/build && zip -r SpecBridge.ipa Payload
 
