@@ -20,24 +20,25 @@ jobs:
           export LC_ALL=C
           export LANG=C
           
-          # 1. MATCHING YOUR SCREENSHOT
-          # We are using the exact RTMP URL from your image.
-          # We add a '/' at the end of live2 so the key attaches correctly.
+          echo "1. Redirecting Twitch to YouTube..."
           STREAM_KEY="3w6v-1cgm-sjrj-8y4r-9v48"
           find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app/|rtmp://a.rtmp.youtube.com/live2/$STREAM_KEY|g" {} +
 
-          # 2. FORCE BITRATE
-          find SourcePackages -type f -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
+          echo "2. Nuking the Login Screen (UI Force)..."
+          # This tries to find where the app decides to show the LoginView and forces it to the MainView/StreamView instead
+          find . -type f -name "*.swift" -exec sed -i '' 's/showLoginScreen()/return/g' {} +
+          find . -type f -name "*.swift" -exec sed -i '' 's/present(authViewController/ \/\/ present(authViewController/g' {} +
+          
+          # Force the App Delegate / Scene Delegate to think we are always logged in
+          find . -type f -name "*.swift" -exec sed -i '' 's/isLoggedIn = false/isLoggedIn = true/g' {} +
 
-          # 3. PERMISSIONS
+          echo "3. Bypass Logic & Permissions..."
+          find . -type f -name "*.swift" -exec sed -i '' -E 's/isRegistered[[:space:]]*:[[:space:]]*Bool[[:space:]]*=[[:space:]]*false/isRegistered = true/g' {} +
+          find . -type f -name "*.swift" -exec sed -i '' -E 's/isAuthorized[[:space:]]*=[[:space:]]*false/isAuthorized = true/g' {} +
+          
           find . -name "Info.plist" -exec plutil -replace NSCameraUsageDescription -string "Camera for YouTube" {} \;
           find . -name "Info.plist" -exec plutil -replace NSMicrophoneUsageDescription -string "Mic for YouTube" {} \;
           find . -name "Info.plist" -exec plutil -replace NSLocalNetworkUsageDescription -string "Network for YouTube" {} \;
-
-          # 4. BYPASS REGISTRATION
-          find . -type f -name "*.swift" -exec sed -i '' -E 's/isRegistered[[:space:]]*:[[:space:]]*Bool[[:space:]]*=[[:space:]]*false/isRegistered = true/g' {} +
-          find . -type f -name "*.swift" -exec sed -i '' -E 's/isRegistered[[:space:]]*=[[:space:]]*false/isRegistered = true/g' {} +
-          find . -type f -name "*.swift" -exec sed -i '' -E 's/isAuthorized[[:space:]]*=[[:space:]]*false/isAuthorized = true/g' {} +
 
       - name: Build and Archive
         run: |
