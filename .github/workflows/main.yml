@@ -59,27 +59,3 @@ jobs:
         with:
           name: SpecBridge-YouTube-IPA
           path: build/SpecBridge.ipa
-            -sdk iphoneos \
-            -archivePath $PWD/build/SpecBridge.xarchive \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            PROVISIONING_PROFILE_REQUIRED=NO
-
-      - name: Prepare IPA (Targeted Path)
-        run: |
-          mkdir -p $PWD/build/Payload
-          # Specifically looking INSIDE the archive to avoid the identical file error
-          APP_PATH=$(find $PWD/build/SpecBridge.xarchive/Products/Applications -name "*.app" -type d | head -n 1)
-          echo "Found app at: $APP_PATH"
-          if [ -z "$APP_PATH" ]; then
-            echo "Error: App not found in archive!"
-            exit 1
-          fi
-          cp -r "$APP_PATH" $PWD/build/Payload/
-          cd $PWD/build && zip -r SpecBridge.ipa Payload
-
-      - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: SpecBridge-YouTube-IPA
-          path: build/SpecBridge.ipa
