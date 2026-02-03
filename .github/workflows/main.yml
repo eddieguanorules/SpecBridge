@@ -7,10 +7,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build
         run: |
-          xcodebuild -project SpecBridge.xcodeproj -scheme SpecBridge -sdk iphoneos -configuration Release archive -archivePath $PWD/build/SpecBridge.xcarchive
-          xcodebuild -exportArchive -archivePath $PWD/build/SpecBridge.xcarchive -exportOptionsPlist exportOptions.plist -exportPath $PWD/build
+          xcodebuild -project SpecBridge.xcodeproj -scheme SpecBridge -configuration Release -sdk iphoneos -allowProvisioningUpdates archive -archivePath $PWD/build/SpecBridge.xcarchive
+          mkdir -p $PWD/build/Payload
+          cp -r $PWD/build/SpecBridge.xcarchive/Products/Applications/*.app $PWD/build/Payload
+          cd $PWD/build && zip -r SpecBridge.ipa Payload
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: SpecBridge-IPA
-          path: build/*.ipa
+          path: build/SpecBridge.ipa
