@@ -23,18 +23,17 @@ jobs:
       - name: Surgical Patch & YouTube Injection
         run: |
           echo "Step 1: Fixing the 'VariableBitRate' Scope Error in HaishinKit..."
-          # This specifically targets the file in the new SourcePackages folder
-          find SourcePackages -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
+          # The '-type f' ensures we only edit real files, skipping the symlinks that caused your last crash.
+          find SourcePackages -type f -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
 
           echo "Step 2: Swapping Twitch Ingest for YouTube..."
-          find . -name "*.swift" -exec sed -i '' 's|rtmp://live.twitch.tv/app/|rtmp://a.rtmp.youtube.com/live2/|g' {} +
+          find . -type f -name "*.swift" -exec sed -i '' 's|rtmp://live.twitch.tv/app/|rtmp://a.rtmp.youtube.com/live2/|g' {} +
 
           echo "Step 3: Updating UI Labels (Twitch -> YT)..."
           find . -type f \( -name "*.swift" -o -name "*.storyboard" -o -name "*.xib" \) -print0 | xargs -0 sed -i '' 's/Twitch/YT/g'
 
       - name: Build and Archive
         run: |
-          # Point the build to the SAME SourcePackages folder we just patched
           xcodebuild archive \
             -project *.xcodeproj \
             -scheme SpecBridge \
