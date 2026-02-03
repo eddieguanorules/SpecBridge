@@ -1,9 +1,7 @@
-name: Build SpecBridge IPA (YouTube)
+name: Build SpecBridge IPA (YouTube Bypass)
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
     branches: [ main ]
   workflow_dispatch:
 
@@ -17,20 +15,25 @@ jobs:
 
       - name: Resolve Dependencies
         run: |
-          # Force dependencies into a predictable local folder
           xcodebuild -resolvePackageDependencies -clonedSourcePackagesDirPath SourcePackages
 
-      - name: Surgical Patch & YouTube Injection
+      - name: Surgical Patch & Registration Bypass
         run: |
-          echo "Step 1: Fixing the 'VariableBitRate' Scope Error in HaishinKit..."
-          # Fixes the 'exit code 1' by only targeting regular files (-type f)
+          echo "Step 1: Fixing HaishinKit VariableBitRate Error..."
           find SourcePackages -type f -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
 
-          echo "Step 2: Swapping Twitch Ingest for YouTube..."
+          echo "Step 2: Swapping Twitch for YouTube..."
           find . -type f -name "*.swift" -exec sed -i '' 's|rtmp://live.twitch.tv/app/|rtmp://a.rtmp.youtube.com/live2/|g' {} +
-
-          echo "Step 3: Updating UI Labels (Twitch -> YT)..."
           find . -type f \( -name "*.swift" -o -name "*.storyboard" -o -name "*.xib" \) -print0 | xargs -0 sed -i '' 's/Twitch/YT/g'
+
+          echo "Step 3: Deep Patching Registration & Auth Logic..."
+          # This forces 'isRegistered', 'isAuthorized', and 'isConnected' flags to always stay True
+          find . -type f -name "*.swift" -exec sed -i '' 's/isRegistered = false/isRegistered = true/g' {} +
+          find . -type f -name "*.swift" -exec sed -i '' 's/isAuthorized = false/isAuthorized = true/g' {} +
+          find . -type f -name "*.swift" -exec sed -i '' 's/isConnected = false/isConnected = true/g' {} +
+          
+          # This patches common 'guard' statements that kick you out if not registered
+          find . -type f -name "*.swift" -exec sed -i '' 's/guard isRegistered/guard true \/\/ isRegistered/g' {} +
 
       - name: Build and Archive
         run: |
@@ -48,21 +51,12 @@ jobs:
       - name: Prepare IPA
         run: |
           mkdir -p build/Payload
-          
-          # Smarter search to find the .app wherever it was archived
           APP_PATH=$(find . -name "*.app" -type d | grep -v "Payload" | head -n 1)
-          echo "Found app at: $APP_PATH"
-          
-          if [ -z "$APP_PATH" ]; then
-            echo "Error: Could not find .app file!"
-            exit 1
-          fi
-          
           cp -r "$APP_PATH" build/Payload/
           cd build && zip -r SpecBridge.ipa Payload
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SpecBridge-YouTube-IPA
+          name: SpecBridge-YouTube-Bypass
           path: build/SpecBridge.ipa
