@@ -20,32 +20,31 @@ jobs:
           export LC_ALL=C
           export LANG=C
           
-          echo "1. Fixing HaishinKit Bitrate Logic..."
-          # This patch fixes the 'VTSessionOptionKey' error by ensuring the code remains syntactically correct
+          echo "1. Precision Patching HaishinKit..."
+          # This specifically changes the value assigned to variableBitRate instead of renaming the variable itself
+          # This prevents the 'cannot find in scope' error you just saw
           find SourcePackages -type f -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
           
-          echo "2. Redirecting Twitch to YouTube..."
-          # Replace the Twitch URL with your YouTube ingest + Stream Key
+          echo "2. Hardcoding YouTube Ingest..."
+          # This replaces the Twitch URL with your specific YouTube URL + Key
           STREAM_KEY="3w6v-1cgm-sjrj-8y4r-9v48"
           find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app/|rtmp://a.rtmp.youtube.com/live2/$STREAM_KEY|g" {} +
 
-          echo "3. UI & Registration Bypass..."
-          # Force the app to believe it is registered/authorized
+          echo "3. Bypassing Login & Registration..."
           find . -type f -name "*.swift" -exec sed -i '' -E 's/isRegistered[[:space:]]*:[[:space:]]*Bool[[:space:]]*=[[:space:]]*false/isRegistered = true/g' {} +
           find . -type f -name "*.swift" -exec sed -i '' -E 's/isRegistered[[:space:]]*=[[:space:]]*false/isRegistered = true/g' {} +
           find . -type f -name "*.swift" -exec sed -i '' -E 's/isAuthorized[[:space:]]*=[[:space:]]*false/isAuthorized = true/g' {} +
           
-          # Force the login screen to be skipped (Nuking common login calls)
+          # Force jump past login screens
           find . -type f -name "*.swift" -exec sed -i '' 's/showLoginScreen()/return/g' {} +
           
-          echo "4. Injecting Info.plist Permissions..."
-          find . -name "Info.plist" -exec plutil -replace NSCameraUsageDescription -string "SpecBridge needs camera access for YouTube streaming." {} \;
-          find . -name "Info.plist" -exec plutil -replace NSMicrophoneUsageDescription -string "SpecBridge needs microphone access for YouTube audio." {} \;
-          find . -name "Info.plist" -exec plutil -replace NSLocalNetworkUsageDescription -string "Network access for glasses communication." {} \;
+          echo "4. Fixing Info.plist Permissions..."
+          find . -name "Info.plist" -exec plutil -replace NSCameraUsageDescription -string "Camera for YouTube" {} \;
+          find . -name "Info.plist" -exec plutil -replace NSMicrophoneUsageDescription -string "Mic for YouTube" {} \;
+          find . -name "Info.plist" -exec plutil -replace NSLocalNetworkUsageDescription -string "Network for glasses communication" {} \;
 
       - name: Build and Archive
         run: |
-          # The 2>&1 | tee build.log part saves a copy of all errors for the debug step below
           xcodebuild archive \
             -project *.xcodeproj \
             -scheme SpecBridge \
@@ -65,7 +64,7 @@ jobs:
           cp -r "$APP_PATH" build/Payload/
           cd build && zip -r SpecBridge.ipa Payload
 
-      - name: Upload Build Logs (Debug Mode)
+      - name: Upload Build Logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
