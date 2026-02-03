@@ -1,4 +1,4 @@
-name: Build SpecBridge IPA
+Name: Build SpecBridge IPA (YouTube)
 
 on:
   push:
@@ -20,9 +20,14 @@ jobs:
 
       - name: Surgical Patch of HaishinKit
         run: |
-          # Fixing the error Jason couldn't: Patching the hidden bitrate constant
+          # Fixing the bitrate constant for smoother streaming on YouTube
           find ~/Library/Developer/Xcode/DerivedData -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} + || true
           find . -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
+
+      - name: Inject YouTube Ingest URL
+        run: |
+          # This replaces any mentions of Twitch RTMP with YouTube RTMP in your Swift files
+          find . -name "*.swift" -exec sed -i '' 's|rtmp://live.twitch.tv/app/|rtmp://a.rtmp.youtube.com/live2/|g' {} +
 
       - name: Build and Archive
         run: |
@@ -36,11 +41,11 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             PROVISIONING_PROFILE_REQUIRED=NO
 
-      - name: Prepare IPA (Nuclear Search)
+      - name: Prepare IPA (Consolidated Nuclear Search)
         run: |
           mkdir -p $PWD/build/Payload
-          # This line searches the entire workspace for the .app folder and moves it to the Payload
-          APP_PATH=$(find $PWD/build -name "*.app" -type d | head -n 1)
+          # Find the .app folder and move it to Payload for ZIPing
+          APP_PATH=$(find $PWD/build/SpecBridge.xarchive -name "*.app" -type d | head -n 1)
           echo "Found app at: $APP_PATH"
           cp -r "$APP_PATH" $PWD/build/Payload/
           cd $PWD/build && zip -r SpecBridge.ipa Payload
@@ -48,72 +53,5 @@ jobs:
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SpecBridge-IPA
-          path: build/SpecBridge.ipa
-
-      - name: Prepare IPA
-        run: |
-          mkdir -p $PWD/build/Payload
-          # This updated line searches the ENTIRE build directory for any .app file and moves it
-          find $PWD/build -name "*.app" -type d -exec cp -r {} $PWD/build/Payload/ \;
-          cd $PWD/build && zip -r SpecBridge.ipa Payload
-
-      - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: SpecBridge-IPA
-          path: build/SpecBridge.ipa
-
-      - name: Prepare IPA
-        run: |
-          mkdir -p $PWD/build/Payload
-          # This updated line finds the .app file regardless of its specific sub-folder
-          find $PWD/build/SpecBridge.xarchive/Products/Applications -name "*.app" -exec cp -r {} $PWD/build/Payload/ \;
-          cd $PWD/build && zip -r SpecBridge.ipa Payload
-
-      - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: SpecBridge-IPA
-          path: build/SpecBridge.ipa
-            -archivePath $PWD/build/SpecBridge.xarchive \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            PROVISIONING_PROFILE_REQUIRED=NO
-
-      - name: Prepare IPA
-        run: |
-          mkdir -p $PWD/build/Payload
-          cp -r $PWD/build/SpecBridge.xarchive/Products/Applications/*.app $PWD/build/Payload
-          cd $PWD/build && zip -r SpecBridge.ipa Payload
-
-      - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: SpecBridge-IPA
-          path: build/SpecBridge.ipa
-
-      - name: Prepare IPA
-        run: |
-          mkdir -p $PWD/build/Payload
-          cp -r $PWD/build/SpecBridge.xarchive/Products/Applications/*.app $PWD/build/Payload
-          cd $PWD/build && zip -r SpecBridge.ipa Payload
-
-      - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: SpecBridge-IPA
-          path: build/SpecBridge.ipa
-            PROVISIONING_PROFILE_REQUIRED=NO
-
-      - name: Prepare IPA
-        run: |
-          mkdir -p $PWD/build/Payload
-          cp -r $PWD/build/SpecBridge.xarchive/Products/Applications/*.app $PWD/build/Payload
-          cd $PWD/build && zip -r SpecBridge.ipa Payload
-
-      - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: SpecBridge-IPA
+          name: SpecBridge-YouTube-IPA
           path: build/SpecBridge.ipa
