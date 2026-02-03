@@ -9,18 +9,22 @@ on:
 
 jobs:
   build:
-    runs-on: macos-15  # Back to macOS 15 to handle the new project format
+    runs-on: macos-15
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # No Xcode select needed here, we'll use the default Xcode 16
+      - name: Resolve Dependencies
+        run: xcodebuild -resolvePackageDependencies
 
-      - name: Patch HaishinKit Error
+      - name: Surgical Patch of HaishinKit
         run: |
-          echo "Applying medical surgery to HaishinKit..."
-          # This finds the specific file causing the 'VariableBitRate' error and fixes it
+          echo "Locating and patching hidden HaishinKit files..."
+          # This command searches the hidden library folders where SPM stores code
+          find ~/Library/Developer/Xcode/DerivedData -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} + || true
+          
+          # Also check the local checkout folder just in case
           find . -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
 
       - name: Build and Archive
@@ -34,6 +38,18 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             PROVISIONING_PROFILE_REQUIRED=NO
+
+      - name: Prepare IPA
+        run: |
+          mkdir -p $PWD/build/Payload
+          cp -r $PWD/build/SpecBridge.xarchive/Products/Applications/*.app $PWD/build/Payload
+          cd $PWD/build && zip -r SpecBridge.ipa Payload
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SpecBridge-IPA
+          path: build/SpecBridge.ipa
 
       - name: Prepare IPA
         run: |
