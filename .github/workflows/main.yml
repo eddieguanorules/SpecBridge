@@ -7,13 +7,19 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build
         run: |
-          # 1. Clean the project first to remove "stale" errors
-          xcodebuild clean -project *.xcodeproj -scheme SpecBridge CODE_SIGNING_ALLOWED=NO
+          # Force the build to ignore the developer's "Team" and "Signing" settings
+          xcodebuild archive \
+            -project *.xcodeproj \
+            -scheme SpecBridge \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath $PWD/build/SpecBridge.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            PROVISIONING_PROFILE_REQUIRED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            DEVELOPMENT_TEAM=""
           
-          # 2. Force the archive with "PROVISIONING_PROFILE_REQUIRED=NO"
-          xcodebuild archive -project *.xcodeproj -scheme SpecBridge -configuration Release -sdk iphoneos -archivePath $PWD/build/SpecBridge.xcarchive CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO PROVISIONING_PROFILE_REQUIRED=NO
-          
-          # 3. Create the IPA folder
           mkdir -p $PWD/build/Payload
           cp -r $PWD/build/SpecBridge.xcarchive/Products/Applications/*.app $PWD/build/Payload
           cd $PWD/build && zip -r SpecBridge.ipa Payload
