@@ -1,4 +1,4 @@
-name: Build SpecBridge IPA (YouTube Stabilizer)
+name: Build SpecBridge IPA (Final Handshake)
 
 on:
   push:
@@ -15,31 +15,34 @@ jobs:
       - name: Resolve Dependencies
         run: xcodebuild -resolvePackageDependencies -clonedSourcePackagesDirPath SourcePackages
 
-      - name: Surgical Patch & YouTube Optimization
+      - name: Surgical Patch & Protocol Force
         run: |
           export LC_ALL=C
           export LANG=C
           
-          # The exact RTMPS path for YouTube
-          FINAL_URL="rtmps://a.rtmps.youtube.com:443/live2/3w6v-1cgm-sjrj-8y4r-9v48"
+          # We use the absolute YouTube URL including the Port 443
+          # NOTE: No trailing slash here because the app's code usually adds it.
+          FINAL_URL="rtmps://a.rtmps.youtube.com:443/live2"
           
-          echo "1. Forcing YouTube-Compatible Video Settings..."
-          # YouTube hates Variable Bitrate from mobile devices. We force Average Bitrate.
+          echo "1. Smoothing Video Bitrate for YouTube..."
+          # YouTube often kills mobile streams that use Variable Bitrate (VBR). 
+          # We force Average Bitrate (ABR) for a steady data flow.
           find SourcePackages -type f -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
           
-          echo "2. Injecting Hard-Coded Destination..."
-          # This replaces the Twitch URL with your exact YouTube path.
-          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app/|$FINAL_URL|g" {} +
+          echo "2. Injecting Absolute YouTube URL..."
+          # This replaces the default Twitch address with the secure YouTube ingest.
+          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app/|$FINAL_URL/|g" {} +
           find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app|$FINAL_URL|g" {} +
 
-          echo "3. Forcing Port 443 and Stability..."
-          # Forcing the app to use the secure web port
+          echo "3. Forcing Port 443 Globally..."
+          # This ensures the app doesn't try to use the Twitch port (1935)
           find . -type f -name "*.swift" -exec sed -i '' 's/port: 1935/port: 443/g' {} +
           find . -type f -name "*.swift" -exec sed -i '' 's/1935/443/g' {} +
 
-          echo "4. Permissions & Info.plist..."
+          echo "4. Permissions Injection..."
           find . -name "Info.plist" -exec plutil -replace NSCameraUsageDescription -string "Camera for YouTube" {} \;
           find . -name "Info.plist" -exec plutil -replace NSMicrophoneUsageDescription -string "Mic for YouTube" {} \;
+          find . -name "Info.plist" -exec plutil -replace NSLocalNetworkUsageDescription -string "Network for glasses communication" {} \;
 
       - name: Build and Archive
         run: |
@@ -66,5 +69,5 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: SpecBridge-Stabilized
+          name: SpecBridge-Final-Handshake
           path: build/SpecBridge.ipa
