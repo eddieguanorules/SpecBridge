@@ -1,4 +1,4 @@
-name: Build SpecBridge IPA (RTMPS Secure)
+name: Build SpecBridge IPA (Master Handshake)
 
 on:
   push:
@@ -20,24 +20,26 @@ jobs:
           export LC_ALL=C
           export LANG=C
           
-          echo "1. Fixing HaishinKit Library Syntax..."
-          # This fixes the bitrate constant that causes modern Xcode to fail
+          echo "1. Fixing HaishinKit Library..."
           find SourcePackages -type f -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
           
-          echo "2. Redirecting Twitch to SECURE YouTube Ingest..."
-          # This replaces the internal Twitch URL with YouTube's secure RTMPS endpoint.
-          # We leave the key blank so you can type it in manually as discussed.
-          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app/|rtmps://a.rtmps.youtube.com/live2/|g" {} +
+          echo "2. Hardcoding Master YouTube URL (No Trailing Slash)..."
+          # This ensures that when the app appends your key, it looks like 'live2/key'
+          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app/|rtmps://a.rtmps.youtube.com/live2|g" {} +
+          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app|rtmps://a.rtmps.youtube.com/live2|g" {} +
 
-          echo "3. Injecting Info.plist Permissions..."
-          # Critical: This ensures iOS grants the app access to the Camera and Mic.
-          find . -name "Info.plist" -exec plutil -replace NSCameraUsageDescription -string "SpecBridge needs camera access for YouTube streaming." {} \;
-          find . -name "Info.plist" -exec plutil -replace NSMicrophoneUsageDescription -string "SpecBridge needs microphone access for YouTube audio." {} \;
-          find . -name "Info.plist" -exec plutil -replace NSLocalNetworkUsageDescription -string "Network access required for Meta glasses communication." {} \;
+          echo "3. FORCING SECURE PORT (443)..."
+          # This tells the app's network engine to use the secure web port instead of the Twitch port
+          find . -type f -name "*.swift" -exec sed -i '' 's/port: 1935/port: 443/g' {} +
+          find . -type f -name "*.swift" -exec sed -i '' 's/1935/443/g' {} +
+
+          echo "4. Permissions Injection..."
+          find . -name "Info.plist" -exec plutil -replace NSCameraUsageDescription -string "Camera for YouTube" {} \;
+          find . -name "Info.plist" -exec plutil -replace NSMicrophoneUsageDescription -string "Mic for YouTube" {} \;
+          find . -name "Info.plist" -exec plutil -replace NSLocalNetworkUsageDescription -string "Network for glasses communication" {} \;
 
       - name: Build and Archive
         run: |
-          # The successful command from your last log
           xcodebuild archive \
             -project *.xcodeproj \
             -scheme SpecBridge \
@@ -57,16 +59,9 @@ jobs:
           cp -r "$APP_PATH" build/Payload/
           cd build && zip -r SpecBridge.ipa Payload
 
-      - name: Upload Build Logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-error-logs
-          path: build.log
-
       - name: Upload IPA Artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: SpecBridge-RTMPS-Stable
+          name: SpecBridge-Master-Handshake
           path: build/SpecBridge.ipa
