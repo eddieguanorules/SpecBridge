@@ -1,4 +1,4 @@
-name: Build SpecBridge IPA (Path Purifier)
+name: Build SpecBridge IPA (Deep Fix)
 
 on:
   push:
@@ -15,21 +15,26 @@ jobs:
       - name: Resolve Dependencies
         run: xcodebuild -resolvePackageDependencies -clonedSourcePackagesDirPath SourcePackages
 
-      - name: Surgical Path Alignment
+      - name: Surgical Patch & Protocol Force
         run: |
           export LC_ALL=C
           export LANG=C
           
-          echo "1. Forcing Stable Bitrate..."
+          # YouTube Destination with Secure Port
+          FINAL_URL="rtmps://a.rtmps.youtube.com:443/live2"
+          
+          echo "1. Smoothing Video Bitrate..."
           find SourcePackages -type f -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
           
-          echo "2. Cleaning the RTMP Path..."
-          # This removes any existing Twitch logic and forces the clean YouTube base URL.
-          # We use a trailing slash only once to prevent the 'live2//key' error.
-          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app/|rtmps://a.rtmps.youtube.com:443/live2/|g" {} +
-          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app|rtmps://a.rtmps.youtube.com:443/live2/|g" {} +
+          echo "2. Forcing Secure Protocol globally..."
+          # This converts every internal 'rtmp' call to 'rtmps'
+          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://|rtmps://|g" {} +
+          
+          echo "3. Redirecting the Pipe..."
+          find . -type f -name "*.swift" -exec sed -i '' "s|live.twitch.tv/app/|$FINAL_URL/|g" {} +
+          find . -type f -name "*.swift" -exec sed -i '' "s|live.twitch.tv/app|$FINAL_URL|g" {} +
 
-          echo "3. Port Lockdown (443)..."
+          echo "4. Hard-Locking Port 443..."
           find . -type f -name "*.swift" -exec sed -i '' 's/port: 1935/port: 443/g' {} +
           find . -type f -name "*.swift" -exec sed -i '' 's/1935/443/g' {} +
 
@@ -56,5 +61,5 @@ jobs:
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SpecBridge-Path-Purifier
+          name: SpecBridge-Deep-Fix
           path: build/SpecBridge.ipa
