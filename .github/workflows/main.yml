@@ -1,4 +1,4 @@
-name: Build SpecBridge IPA (Master Handshake)
+name: Build SpecBridge IPA (Hard-Coded YouTube)
 
 on:
   push:
@@ -20,23 +20,27 @@ jobs:
           export LC_ALL=C
           export LANG=C
           
+          # This is your exact YouTube Destination
+          # We use RTMPS and the standard Port 443
+          FINAL_URL="rtmps://a.rtmps.youtube.com:443/live2/3w6v-1cgm-sjrj-8y4r-9v48"
+          
           echo "1. Fixing HaishinKit Library..."
           find SourcePackages -type f -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
           
-          echo "2. Hardcoding Master YouTube URL (No Trailing Slash)..."
-          # This ensures that when the app appends your key, it looks like 'live2/key'
-          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app/|rtmps://a.rtmps.youtube.com/live2|g" {} +
-          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app|rtmps://a.rtmps.youtube.com/live2|g" {} +
+          echo "2. Injecting Hard-Coded YouTube Path..."
+          # This replaces the Twitch URL with your SPECIFIC YouTube stream path.
+          # We replace both versions (with and without slash) to be 100% sure.
+          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app/|$FINAL_URL|g" {} +
+          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app|$FINAL_URL|g" {} +
 
-          echo "3. FORCING SECURE PORT (443)..."
-          # This tells the app's network engine to use the secure web port instead of the Twitch port
+          echo "3. Forcing Secure Port globally..."
           find . -type f -name "*.swift" -exec sed -i '' 's/port: 1935/port: 443/g' {} +
           find . -type f -name "*.swift" -exec sed -i '' 's/1935/443/g' {} +
 
           echo "4. Permissions Injection..."
           find . -name "Info.plist" -exec plutil -replace NSCameraUsageDescription -string "Camera for YouTube" {} \;
           find . -name "Info.plist" -exec plutil -replace NSMicrophoneUsageDescription -string "Mic for YouTube" {} \;
-          find . -name "Info.plist" -exec plutil -replace NSLocalNetworkUsageDescription -string "Network for glasses communication" {} \;
+          find . -name "Info.plist" -exec plutil -replace NSLocalNetworkUsageDescription -string "Network for glasses" {} \;
 
       - name: Build and Archive
         run: |
@@ -63,5 +67,5 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: SpecBridge-Master-Handshake
+          name: SpecBridge-YouTube-Final
           path: build/SpecBridge.ipa
