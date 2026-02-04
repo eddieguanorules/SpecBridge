@@ -1,4 +1,4 @@
-name: Build SpecBridge IPA (Hard-Coded YouTube)
+name: Build SpecBridge IPA (YouTube Stabilizer)
 
 on:
   push:
@@ -15,32 +15,31 @@ jobs:
       - name: Resolve Dependencies
         run: xcodebuild -resolvePackageDependencies -clonedSourcePackagesDirPath SourcePackages
 
-      - name: Surgical Patch & Permission Injection
+      - name: Surgical Patch & YouTube Optimization
         run: |
           export LC_ALL=C
           export LANG=C
           
-          # This is your exact YouTube Destination
-          # We use RTMPS and the standard Port 443
+          # The exact RTMPS path for YouTube
           FINAL_URL="rtmps://a.rtmps.youtube.com:443/live2/3w6v-1cgm-sjrj-8y4r-9v48"
           
-          echo "1. Fixing HaishinKit Library..."
+          echo "1. Forcing YouTube-Compatible Video Settings..."
+          # YouTube hates Variable Bitrate from mobile devices. We force Average Bitrate.
           find SourcePackages -type f -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
           
-          echo "2. Injecting Hard-Coded YouTube Path..."
-          # This replaces the Twitch URL with your SPECIFIC YouTube stream path.
-          # We replace both versions (with and without slash) to be 100% sure.
+          echo "2. Injecting Hard-Coded Destination..."
+          # This replaces the Twitch URL with your exact YouTube path.
           find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app/|$FINAL_URL|g" {} +
           find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app|$FINAL_URL|g" {} +
 
-          echo "3. Forcing Secure Port globally..."
+          echo "3. Forcing Port 443 and Stability..."
+          # Forcing the app to use the secure web port
           find . -type f -name "*.swift" -exec sed -i '' 's/port: 1935/port: 443/g' {} +
           find . -type f -name "*.swift" -exec sed -i '' 's/1935/443/g' {} +
 
-          echo "4. Permissions Injection..."
+          echo "4. Permissions & Info.plist..."
           find . -name "Info.plist" -exec plutil -replace NSCameraUsageDescription -string "Camera for YouTube" {} \;
           find . -name "Info.plist" -exec plutil -replace NSMicrophoneUsageDescription -string "Mic for YouTube" {} \;
-          find . -name "Info.plist" -exec plutil -replace NSLocalNetworkUsageDescription -string "Network for glasses" {} \;
 
       - name: Build and Archive
         run: |
@@ -67,5 +66,5 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: SpecBridge-YouTube-Final
+          name: SpecBridge-Stabilized
           path: build/SpecBridge.ipa
