@@ -1,4 +1,4 @@
-name: Build SpecBridge IPA (Final Handshake)
+name: Build SpecBridge IPA (Hard-Wired YouTube)
 
 on:
   push:
@@ -15,22 +15,52 @@ jobs:
       - name: Resolve Dependencies
         run: xcodebuild -resolvePackageDependencies -clonedSourcePackagesDirPath SourcePackages
 
-      - name: Surgical Patch & Absolute URL
+      - name: Surgical Hard-Wire Patch
         run: |
           export LC_ALL=C
           export LANG=C
           
-          echo "1. Forcing Ultra-Stable Video (YouTube Safe)..."
-          # We force the bitrate down to ensure the connection doesn't drop
+          # This is your bulletproof destination
+          # We've combined the URL and Key into one string
+          FINAL_DEST="rtmps://a.rtmps.youtube.com:443/live2/3w6v-1cgm-sjrj-8y4r-9v48"
+          
+          echo "1. Forcing Data Stability (ABR)..."
           find SourcePackages -type f -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
           
-          echo "2. Injecting Absolute YouTube Path..."
-          # This replaces the entire Twitch string with your YouTube URL + Key.
-          # We include the slash here and remove any logic that might add a second one.
-          FINAL_PATH="rtmps://a.rtmps.youtube.com:443/live2/3w6v-1cgm-sjrj-8y4r-9v48"
-          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app/|$FINAL_PATH|g" {} +
-          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app|$FINAL_PATH|g" {} +
+          echo "2. Hard-Wiring the Destination..."
+          # This overwrites any Twitch reference with your specific YouTube path
+          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app/|$FINAL_DEST|g" {} +
+          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app|$FINAL_DEST|g" {} +
 
-          echo "3. Port & Protocol Lockdown..."
-          find . -type f -name "*.swift" -exec sed -i '' 's/port: 1935/port: 443/g' {} +
+          echo "3. Protocol & Port Lockdown..."
           find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://|rtmps://|g" {} +
+          find . -type f -name "*.swift" -exec sed -i '' 's/port: 1935/port: 443/g' {} +
+          find . -type f -name "*.swift" -exec sed -i '' 's/1935/443/g' {} +
+
+      - name: Build and Archive
+        run: |
+          xcodebuild archive \
+            -project *.xcodeproj \
+            -scheme SpecBridge \
+            -configuration Release \
+            -sdk iphoneos \
+            -clonedSourcePackagesDirPath SourcePackages \
+            -archivePath build/SpecBridge.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            PROVISIONING_PROFILE_REQUIRED=NO 2>&1 | tee build.log
+
+      - name: Prepare IPA
+        if: success()
+        run: |
+          mkdir -p build/Payload
+          APP_PATH=$(find build/SpecBridge.xcarchive/Products/Applications -name "*.app" -type d | head -n 1)
+          cp -r "$APP_PATH" build/Payload/
+          cd build && zip -r SpecBridge.ipa Payload
+
+      - name: Upload IPA Artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SpecBridge-HardWired
+          path: build/SpecBridge.ipa
