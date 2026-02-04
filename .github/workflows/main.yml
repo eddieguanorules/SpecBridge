@@ -1,4 +1,4 @@
-name: Build SpecBridge IPA (Final Handshake)
+name: Build SpecBridge IPA (Absolute Stability)
 
 on:
   push:
@@ -15,33 +15,31 @@ jobs:
       - name: Resolve Dependencies
         run: xcodebuild -resolvePackageDependencies -clonedSourcePackagesDirPath SourcePackages
 
-      - name: Surgical Patch & Protocol Force
+      - name: Surgical Patch & Encoder Optimization
         run: |
           export LC_ALL=C
           export LANG=C
           
-          # We use the absolute YouTube URL including the Port 443
-          # NOTE: No trailing slash here because the app's code usually adds it.
+          # Exact YouTube Destination (Secure)
           FINAL_URL="rtmps://a.rtmps.youtube.com:443/live2"
           
-          echo "1. Smoothing Video Bitrate for YouTube..."
-          # YouTube often kills mobile streams that use Variable Bitrate (VBR). 
-          # We force Average Bitrate (ABR) for a steady data flow.
+          echo "1. Forcing YouTube Encoder Compatibility..."
+          # Fixes the variable bitrate crash and forces a steady data flow
           find SourcePackages -type f -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
           
-          echo "2. Injecting Absolute YouTube URL..."
-          # This replaces the default Twitch address with the secure YouTube ingest.
+          echo "2. Hard-Coding the Connection URL..."
+          # Swapping the internal Twitch engine for YouTube Secure Ingest
           find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app/|$FINAL_URL/|g" {} +
           find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app|$FINAL_URL|g" {} +
 
           echo "3. Forcing Port 443 Globally..."
-          # This ensures the app doesn't try to use the Twitch port (1935)
+          # Ensuring no packets try to leak out of the old Twitch port
           find . -type f -name "*.swift" -exec sed -i '' 's/port: 1935/port: 443/g' {} +
           find . -type f -name "*.swift" -exec sed -i '' 's/1935/443/g' {} +
 
-          echo "4. Permissions Injection..."
-          find . -name "Info.plist" -exec plutil -replace NSCameraUsageDescription -string "Camera for YouTube" {} \;
-          find . -name "Info.plist" -exec plutil -replace NSMicrophoneUsageDescription -string "Mic for YouTube" {} \;
+          echo "4. Injecting Info.plist Permissions..."
+          find . -name "Info.plist" -exec plutil -replace NSCameraUsageDescription -string "YouTube Stream Camera" {} \;
+          find . -name "Info.plist" -exec plutil -replace NSMicrophoneUsageDescription -string "YouTube Stream Audio" {} \;
           find . -name "Info.plist" -exec plutil -replace NSLocalNetworkUsageDescription -string "Network for glasses communication" {} \;
 
       - name: Build and Archive
@@ -69,5 +67,5 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: SpecBridge-Final-Handshake
+          name: SpecBridge-Absolute-Stability
           path: build/SpecBridge.ipa
