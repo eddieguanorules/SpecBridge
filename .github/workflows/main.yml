@@ -1,4 +1,4 @@
-name: Build SpecBridge IPA (Nuclear Stability)
+name: Build SpecBridge IPA (Deep Protocol Fix)
 
 on:
   push:
@@ -15,29 +15,28 @@ jobs:
       - name: Resolve Dependencies
         run: xcodebuild -resolvePackageDependencies -clonedSourcePackagesDirPath SourcePackages
 
-      - name: Surgical Patch & Stability Force
+      - name: Deep Surgical Patch
         run: |
           export LC_ALL=C
           export LANG=C
           
-          # 1. Force YouTube RTMPS Port 443
+          # YouTube Destination
           FINAL_URL="rtmps://a.rtmps.youtube.com:443/live2"
           
           echo "1. Smoothing Video Bitrate..."
-          # This forces Average Bitrate and sets a 2.5Mbps cap (ideal for 1080p mobile)
           find SourcePackages -type f -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
           
-          echo "2. Hard-Coding YouTube Destination..."
-          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app/|$FINAL_URL/|g" {} +
-          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app|$FINAL_URL|g" {} +
+          echo "2. Forcing RTMPS Protocol globally..."
+          # This forces the app to treat ALL connections as Secure (YouTube style)
+          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://|rtmps://|g" {} +
+          
+          echo "3. Hard-Coding YouTube Destination..."
+          find . -type f -name "*.swift" -exec sed -i '' "s|live.twitch.tv/app/|a.rtmps.youtube.com:443/live2/|g" {} +
+          find . -type f -name "*.swift" -exec sed -i '' "s|live.twitch.tv/app|a.rtmps.youtube.com:443/live2|g" {} +
 
-          echo "3. Forcing Strict Port 443..."
+          echo "4. Port Lockdown..."
           find . -type f -name "*.swift" -exec sed -i '' 's/port: 1935/port: 443/g' {} +
           find . -type f -name "*.swift" -exec sed -i '' 's/1935/443/g' {} +
-
-          echo "4. Permissions Injection..."
-          find . -name "Info.plist" -exec plutil -replace NSCameraUsageDescription -string "YouTube Camera" {} \;
-          find . -name "Info.plist" -exec plutil -replace NSMicrophoneUsageDescription -string "YouTube Mic" {} \;
 
       - name: Build and Archive
         run: |
@@ -64,5 +63,5 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: SpecBridge-Nuclear-Stability
+          name: SpecBridge-Deep-Fix
           path: build/SpecBridge.ipa
