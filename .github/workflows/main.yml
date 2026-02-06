@@ -1,66 +1,38 @@
-name: Build SpecBridge IPA (Hard-Wired YouTube)
-
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
-
-jobs:
-  build:
-    runs-on: macos-15
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Resolve Dependencies
-        run: xcodebuild -resolvePackageDependencies -clonedSourcePackagesDirPath SourcePackages
-
-      - name: Surgical Hard-Wire Patch
+- name: Surgical Hard-Wire Patch (Corrected)
         run: |
           export LC_ALL=C
           export LANG=C
           
-          # This is your bulletproof destination
-          # We've combined the URL and Key into one string
-          FINAL_DEST="rtmps://a.rtmps.youtube.com:443/live2/3w6v-1cgm-sjrj-8y4r-9v48"
+          # 1. DEFINE YOUR SECRETS
+          # The Base URL for YouTube (Note the trailing slash!)
+          YT_URL="rtmps://a.rtmps.youtube.com:443/live2/"
+          # Your Specific Key
+          YT_KEY="3w6v-1cgm-sjrj-8y4r-9v48"
+
+          echo "--- STARTING PATCH ---"
+
+          # 2. FIX THE CONNECTIONS (The Plumbing)
+          # We replace the Twitch URL with the YouTube BASE only.
+          # This prevents the "Double Key" error.
+          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app/|$YT_URL|g" {} +
           
-          echo "1. Forcing Data Stability (ABR)..."
+          # 3. HARD-WIRE THE KEY (The trickiest part)
+          # We look for where the app stores the key and force yours in.
+          # This replaces empty string defaults like 'var streamKey = ""' with your key.
+          find . -type f -name "*.swift" -exec sed -i '' "s/var streamKey = \"\"/var streamKey = \"$YT_KEY\"/g" {} +
+          find . -type f -name "*.swift" -exec sed -i '' "s/let defaultKey = \"\"/let defaultKey = \"$YT_KEY\"/g" {} +
+
+          # 4. FIX THE UI (The Paint)
+          # Change the label "Twitch" to "YouTube" so you know it worked.
+          find . -type f -name "*.swift" -exec sed -i '' 's/"Twitch"/"YouTube Hard-Wired"/g' {} +
+
+          # 5. PROTOCOL LOCKDOWN (Safe Mode)
+          # Force SSL (RTMPS) and Port 443
+          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://|rtmps://|g" {} +
+          # This is the SAFE way to change the port (only changing lines that explicitly say 'port:')
+          find . -type f -name "*.swift" -exec sed -i '' 's/port: 1935/port: 443/g' {} +
+
+          # 6. STABILITY (Average Bitrate)
           find SourcePackages -type f -name "VTSessionOptionKey.swift" -exec sed -i '' 's/kVTCompressionPropertyKey_VariableBitRate/kVTCompressionPropertyKey_AverageBitRate/g' {} +
           
-          echo "2. Hard-Wiring the Destination..."
-          # This overwrites any Twitch reference with your specific YouTube path
-          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app/|$FINAL_DEST|g" {} +
-          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://live.twitch.tv/app|$FINAL_DEST|g" {} +
-
-          echo "3. Protocol & Port Lockdown..."
-          find . -type f -name "*.swift" -exec sed -i '' "s|rtmp://|rtmps://|g" {} +
-          find . -type f -name "*.swift" -exec sed -i '' 's/port: 1935/port: 443/g' {} +
-          find . -type f -name "*.swift" -exec sed -i '' 's/1935/443/g' {} +
-
-      - name: Build and Archive
-        run: |
-          xcodebuild archive \
-            -project *.xcodeproj \
-            -scheme SpecBridge \
-            -configuration Release \
-            -sdk iphoneos \
-            -clonedSourcePackagesDirPath SourcePackages \
-            -archivePath build/SpecBridge.xcarchive \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            PROVISIONING_PROFILE_REQUIRED=NO 2>&1 | tee build.log
-
-      - name: Prepare IPA
-        if: success()
-        run: |
-          mkdir -p build/Payload
-          APP_PATH=$(find build/SpecBridge.xcarchive/Products/Applications -name "*.app" -type d | head -n 1)
-          cp -r "$APP_PATH" build/Payload/
-          cd build && zip -r SpecBridge.ipa Payload
-
-      - name: Upload IPA Artifact
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: SpecBridge-HardWired
-          path: build/SpecBridge.ipa
+          echo "--- PATCH COMPLETE ---"
